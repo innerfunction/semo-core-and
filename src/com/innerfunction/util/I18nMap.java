@@ -1,8 +1,11 @@
-package com.innerfunction.semo.core;
+package com.innerfunction.util;
 
 import java.util.Collection;
 import java.util.Map;
 import java.util.Set;
+
+import android.content.Context;
+import android.content.res.Resources;
 
 /**
  * A Map that returns localized strings for resource ID keys.
@@ -12,12 +15,19 @@ import java.util.Set;
  */
 public class I18nMap implements Map<String, String> {
 
-    private Core core;
-    
-    public I18nMap(Core core) {
-        this.core = core;
+    private Resources r;
+    private String packageName;
+
+    public I18nMap(Context context) {
+        this.r = context.getResources();
+        this.packageName = context.getPackageName();
     }
     
+    public String getLocalizedString(String resourceID) {
+        int rid = this.r.getIdentifier( resourceID, "string", this.packageName );
+        return rid > 0 ? this.r.getString( rid ) : null;
+    }
+
     @Override
     public void clear() {
         // Noop.
@@ -25,7 +35,7 @@ public class I18nMap implements Map<String, String> {
 
     @Override
     public boolean containsKey(Object key) {
-        return core.getLocalizedString( (String)key ) != null;
+        return getLocalizedString( (String)key ) != null;
     }
 
     @Override
@@ -40,7 +50,7 @@ public class I18nMap implements Map<String, String> {
 
     @Override
     public String get(Object key) {
-        String s = core.getLocalizedString( (String)key );
+        String s = getLocalizedString( (String)key );
         return s == null ? key.toString() : s;
     }
 

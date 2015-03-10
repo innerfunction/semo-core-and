@@ -1,4 +1,4 @@
-package com.innerfunction.util;
+package com.innerfunction.semo.core;
 
 import java.net.URI;
 import java.util.ArrayList;
@@ -16,6 +16,10 @@ import android.graphics.drawable.Drawable;
 
 import com.innerfunction.uri.CompoundURI;
 import com.innerfunction.uri.Resource;
+import com.innerfunction.util.JSONData;
+import com.innerfunction.util.Maps;
+import com.innerfunction.util.StringTemplate;
+import com.innerfunction.util.TypeConversions;
 
 public class Configuration extends JSONData {
     
@@ -150,7 +154,7 @@ public class Configuration extends JSONData {
         return this.resource;
     }
     
-    public void setContext(Map<String,Object> context) {
+    public void setTemplateContext(Map<String,Object> context) {
         this.templateContext = context;
     }
     

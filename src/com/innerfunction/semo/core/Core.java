@@ -6,34 +6,32 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
-import java.util.Timer;
 
 import android.app.Activity;
 import android.content.Context;
+/*
 import android.content.SharedPreferences;
 import android.content.pm.ApplicationInfo;
+*/
 import android.content.res.Resources;
 import android.graphics.drawable.Drawable;
 import android.util.DisplayMetrics;
 import android.util.Log;
 
-import com.innerfunction.semo.core.mvc.Controller;
-import com.innerfunction.semo.core.mvc.DataObserver;
-import com.innerfunction.semo.core.ui.ViewFactory;
-import com.innerfunction.semo.core.ui.ViewResource;
-import com.innerfunction.util.Configuration;
-import com.innerfunction.util.Configuration.ValueType;
+import com.innerfunction.semo.core.Configuration.ValueType;
 import com.innerfunction.uri.CompoundURI;
 import com.innerfunction.uri.IFAssetManager;
 import com.innerfunction.uri.Resource;
 import com.innerfunction.uri.SchemeHandler;
 import com.innerfunction.uri.StandardURIResolver;
 import com.innerfunction.uri.URIResolver;
+import com.innerfunction.util.I18nMap;
+import com.innerfunction.util.Locals;
 import com.innerfunction.util.StringTemplate;
 import com.innerfunction.util.TypeConversions;
 
 /**
- * Eventpac core service and root resource.
+ * Semo core service and root resource.
  * Note on usage: Core is a singleton class, and instances are mainly resolved using getCore(). Note however
  * that the singleton must be initialized and configured by a call to Core.setupWithConfiguration(...) before first
  * use. The main reason for this is because the Android context must be passed to the instance before it can be
@@ -42,7 +40,7 @@ import com.innerfunction.util.TypeConversions;
  * @author juliangoacher
  *
  */
-public class Core extends Resource implements Service, EPEventHandler {
+public class Core extends Resource implements Service, ComponentFactory {
 
     static final String Tag = Core.class.getSimpleName();
 
@@ -53,18 +51,16 @@ public class Core extends Resource implements Service, EPEventHandler {
     private List<Service> services = new ArrayList<Service>();
     private Map<String,Service> servicesByName = new HashMap<String,Service>();
     private Map<String,Object> globalValues;
-    private Controller mvc;
     private IFAssetManager assetManager;
     private StandardURIResolver standardResolver;
     private Configuration types;
     private TypeConversions conversions;
     private Context androidContext;
     private Resources r;
-    private I18nMap i18nMap = new I18nMap( this );
-    private String packageName;
+    private I18nMap i18nMap;
     private Activity currentActivity;
-    private Timer timer;
-
+    private Locals locals;
+    
     private Core(Context androidContext) {
         super( androidContext );
         this.assetManager = new IFAssetManager( androidContext );
@@ -73,32 +69,26 @@ public class Core extends Resource implements Service, EPEventHandler {
         this.conversions = TypeConversions.instanceForContext( androidContext );
         this.androidContext = androidContext;
         this.r = androidContext.getResources();
-        this.packageName = androidContext.getPackageName();
-        this.timer = new Timer();
-        this.uri = new CompoundURI("s","EPCore");
+        this.i18nMap = new I18nMap( androidContext );
+        this.uri = new CompoundURI("s","SemoCore");
+        this.locals = new Locals("semo");
     }
     
     public void configure(Configuration configuration) {
         setItem( configuration ); // Set the core resource's data to the configuration object.
-
+        
         this.mode = configuration.getValueAsString("mode", "LIVE");
         Log.i(Tag, String.format("Configuration mode: %s", mode ));
-
+        
         // Setup template context.
         globalValues = makeDefaultGlobalModelValues( configuration );
-        configuration.setContext( globalValues );
-
+        configuration.setTemplateContext( globalValues );
+        
         this.configuration = configuration;
         this.types = configuration.getValueAsConfiguration("types");
-
+        
         setDefaultLocalSettings();
         
-        // Setup the MVC controller.
-        mvc = new Controller( standardResolver, globalValues );
-        mvc.configure( configuration );
-        services.add( mvc );
-        servicesByName.put("mvc", mvc );
-
         // Setup services.
         if( configuration.getValueType("services") == ValueType.List ) {
             List<Configuration> servicesConfig = configuration.getValueAsConfigurationList("services");
@@ -122,7 +112,7 @@ public class Core extends Resource implements Service, EPEventHandler {
         else {
             Log.e(Tag,"'services' configuration must be a list");
         }
-
+        
         // Add additional schemes to the resolver/dispatcher.
         Configuration dispatcherConfig = configuration.getValueAsConfiguration("dispatcher.schemes");
         for( String schemeName : dispatcherConfig.getValueNames() ) {
@@ -137,8 +127,7 @@ public class Core extends Resource implements Service, EPEventHandler {
                 servicesByName.put( String.format("%s:", schemeName ), service );
             }
         }
-
-        mvc.setGlobalValue("services", servicesByName );
+        
     }
     
     public Component makeComponent(Configuration definition, String id) {
@@ -155,43 +144,25 @@ public class Core extends Resource implements Service, EPEventHandler {
                         result.configure( definition );
                     }
                     else {
-                        Log.w( Tag, String.format("EPCore - make '%s': Instance of class %s not a Component", id, className ));
+                        Log.w( Tag, String.format("Make %s: Class %s doesn't implement Component", id, className ));
                     }
                 }
-                catch (InstantiationException e) {
-                    Log.e( Tag, String.format("EPCore - make '%s': Error instantiating class %s", id, className ), e );
+                catch(InstantiationException e) {
+                    Log.e( Tag, String.format("Make %s: Error instantiating class %s", id, className ), e );
                 }
-                catch (IllegalAccessException e) {
-                    Log.e( Tag, String.format("EPCore - make '%s': Unable to instantiating class %s", id, className ), e );
+                catch(IllegalAccessException e) {
+                    Log.e( Tag, String.format("Make %s: Unable to instantiating class %s", id, className ), e );
                 }
-                catch (ClassNotFoundException e) {
-                    Log.e( Tag, String.format("EPCore - make '%s': Class %s not found", id, className ), e );
+                catch(ClassNotFoundException e) {
+                    Log.e( Tag, String.format("Make %s: Class %s not found", id, className ), e );
                 }
             }
             else {
-                Log.w( Tag, String.format("EPCore - make '%s': No class name found for type (%s)", id, type ));
+                Log.w( Tag, String.format("Make %s: No class name found for type %s", id, type ));
             }
         }
         else {
-            Log.w( Tag, String.format("EPCore - make '%s': Component configuration missing 'type' property", id ));
-        }
-        return result;
-    }
-    
-    public Controller getMVC() {
-        return mvc;
-    }
-    
-    public ViewResource getRootView() {
-        ViewResource result = null;
-        try {
-            result = (ViewResource)this.configuration.getValueAsResource("rootView");
-        }
-        catch(ClassCastException e) {
-            Log.e(Tag,"Root view does not resolve to a ViewResource");
-        }
-        if( result == null ) {
-            Log.e(Tag,"Root view not resolved");
+            Log.w( Tag, String.format("Make %s: Component configuration missing 'type' property", id ));
         }
         return result;
     }
@@ -199,36 +170,23 @@ public class Core extends Resource implements Service, EPEventHandler {
     public Service getService(String name) {
         return servicesByName.get( name );
     }
-
-    public ViewFactory getViewFactory() {
-        ViewFactory viewFactory = (ViewFactory)getService("viewFactory");
-        if( viewFactory == null ) {
-            Log.w(Tag,"View factory service 'viewFactory' not available");
-        }
-        return viewFactory;
-    }
-
+    
     public URIResolver getResolver() {
         return standardResolver;
     }
-
+    
     public Configuration getTypes() {
         return types;
     }
     
-    public boolean isEPURIScheme(String schemeName) {
+    public boolean isURIScheme(String schemeName) {
         return standardResolver.hasHandlerForURIScheme( schemeName );
     }
     
     public TypeConversions getTypeConversions() {
         return conversions;
     }
-
-    public String getLocalizedString(String resourceID) {
-        int rid = this.r.getIdentifier( resourceID, "string", this.packageName );
-        return rid > 0 ? this.r.getString( rid ) : null;
-    }
-
+    
     public Drawable resolveImage(String svalue) {
         svalue = StringTemplate.render( svalue, globalValues );
         Drawable image = null;
@@ -244,29 +202,7 @@ public class Core extends Resource implements Service, EPEventHandler {
         }
         return image;
     }
-
-    /**
-     * Add a data observer for the specified configuration.
-     * The configuration should have an "observes" property.
-     * @param observer
-     * @param configuration
-     */
-    public void addDataObserverForConfiguration(DataObserver observer, Configuration configuration) {
-        if( configuration.hasValue("observes") ) {
-            String observes = configuration.getValueAsString("observes");
-            mvc.getGlobalModel().addObserver( observes, observer );
-        }
-    }
-
-    /**
-     * Remove a data observer for the specified configuration.
-     * @param configuration
-     * @return
-     */
-    public void removeDataObserver(DataObserver observer) {
-        mvc.getGlobalModel().removeObserver( observer );
-    }
-
+    
     /** Flag indicating whether to force-reset all local settings at app startup. */
     static final boolean ForceResetDefaultSettings = false;
     
@@ -279,24 +215,12 @@ public class Core extends Resource implements Service, EPEventHandler {
         @SuppressWarnings("unchecked")
         Map<String,Object> settings = (Map<String,Object>)configuration.getValue("settings");
         if( settings != null ) {
-            SharedPreferences preferences = getLocalStorage();
-            SharedPreferences.Editor editor = preferences.edit();
-            for( String key : settings.keySet() ) {
-                if( !preferences.contains( key ) || ForceResetDefaultSettings ) {
-                    Object value = settings.get( key );
-                    if( value instanceof String ) {
-                        editor.putString( key, (String)value );
-                    }
-                    else if( value instanceof Boolean ) {
-                        editor.putBoolean( key, (Boolean)value );
-                    }
-                    else if( value instanceof Number ) {
-                        editor.putFloat( key, ((Number)value).floatValue() );
-                    }
-                }
-            }
-            editor.commit();
+            locals.setValues( settings, ForceResetDefaultSettings );
         }
+    }
+    
+    public Locals getLocalSettings() {
+        return locals;
     }
     
     private Map<String,Object> makeDefaultGlobalModelValues(Configuration configuration) {
@@ -362,35 +286,26 @@ public class Core extends Resource implements Service, EPEventHandler {
         
         return values;
     }
-
+    
     public I18nMap getI18nMap() {
         return i18nMap;
     }
-
+    
     public Context getAndroidContext() {
         return androidContext;
     }
-    
+    /*
     public SharedPreferences getLocalStorage(){
         ApplicationInfo ainfo = this.androidContext.getApplicationInfo();
         String prefsName = String.format("Eventpac.%s", ainfo.processName );
         Log.i( Tag, String.format("Using shared preferences name %s", prefsName ) );
         return this.androidContext.getSharedPreferences( prefsName, 0 );
     }
-
+    */
     public IFAssetManager getAssetManager() {
         return this.assetManager;
     }
-
-    public Timer getTimer() {
-        return this.timer;
-    }
-
-    public CompoundURI setGlobalValue(String name, Object value) {
-        mvc.setGlobalValue( name, value );
-        return new CompoundURI("globals", name );
-    }
-
+    
     /**
      * A flag indicating that the current app startup is the first start after an app upgrade.
      */
@@ -398,15 +313,15 @@ public class Core extends Resource implements Service, EPEventHandler {
     public boolean isUpgradeState() {
         return upgradeStart;
     }
-
+    
     public void startService() {
         String appVersion = null;
         try {
-            appVersion = context.getPackageManager().getPackageInfo(context.getPackageName(), 0).versionName;
-            String previousAppVersion = getLocalStorage().getString("previousAppVersion", null );
-            upgradeStart = !appVersion.equals( previousAppVersion );
+            appVersion = context.getPackageManager().getPackageInfo( context.getPackageName(), 0 ).versionName;
+            String currentAppVersion = locals.getString("appVersion", null );
+            upgradeStart = !appVersion.equals( currentAppVersion );
             if( upgradeStart ) {
-                Log.d(Tag,String.format("Detected app upgrade from %s to %s", previousAppVersion, appVersion ));
+                Log.d(Tag,String.format("Detected app upgrade from %s to %s", currentAppVersion, appVersion ));
             }
         }
         catch(Exception e) {
@@ -423,9 +338,7 @@ public class Core extends Resource implements Service, EPEventHandler {
         }
         if( upgradeStart && appVersion != null ) {
             try {
-                SharedPreferences.Editor editor = getLocalStorage().edit();
-                editor.putString("previousAppVersion", appVersion );
-                editor.commit();
+                locals.setString("appVersion", appVersion );
             }
             catch(Exception e) {
                 Log.w(Tag,"Error whilst storing current app version", e);
@@ -458,65 +371,7 @@ public class Core extends Resource implements Service, EPEventHandler {
             currentActivity = null;
         }
     }
-
-    /**
-     * Handle an EP application event.
-     * If the event name is in the form service\<name>.<action> then the event will be dispatched
-     * to the service with the specified name, assuming it exists and is an EPEventHandler instance.
-     * @param name  The event name.
-     * @param args  The event's arguments.
-     * @return A result as returned by the event handler.
-     */
-    @Override
-    public Object handleEPEvent(EPEvent event) {
-        Object result = EPEventHandler.EventNotHandled;
-        // Attempt dispatching to a service.
-        String eventName = event.getName();
-        if( eventName.startsWith("service/") ) {
-            // TODO: Can this event name parsing code be moved into the EPEvent class?
-            // Need to work out what the general form of an event/action name is.
-            // (See also FragmentEPEventHandler; ABFragmentActivity handleEPEvent methods).
-            String serviceName = eventName.substring( 8 );
-            Service service = getService( serviceName );
-            if( service instanceof EPEventHandler ) {
-                result = ((EPEventHandler)service).handleEPEvent( event );
-            }
-        }
-        return result == EPEventHandler.EventNotHandled ? null : result;
-    }
-
-    /**
-     * Dispatch an application action.
-     * The action description is basically an event: URI without the scheme, and this method
-     * works by building a URI using the scheme and then dispatching it through the URI resolver.
-     * @param config
-     * @param context
-     * @return
-     * @throws URISyntaxException
-     */
-    public Object dispatchAction(String action, EPEventHandler target) {
-        action = StringTemplate.render( action, mvc.getGlobalModel() );
-        Object result = null;
-        String uri = action.startsWith("event:") ? action : String.format("event:%s", action );
-        Resource resource = this.resolver.resolveURIFromString( uri );
-        if( resource instanceof EPEvent && target != null ) {
-            result = target.handleEPEvent( (EPEvent)resource );
-        }
-        return result;
-    }
-
-    /**
-     * Dispatch a URI.
-     * Currently, the only dispatchable URI scheme is event:
-     * @param config
-     * @param context
-     * @return
-     * @throws URISyntaxException
-     */
-    public Object dispatchURI(String uri, EPEventHandler target) {
-        return uri.startsWith("event:") ? dispatchAction( uri, target ) : null;
-    }
-
+    
     @SuppressWarnings("unchecked")
     public static Core setupWithConfiguration(Object config, Context context) throws URISyntaxException {
         
