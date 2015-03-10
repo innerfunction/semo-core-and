@@ -34,6 +34,10 @@ public class FileResource extends Resource {
         this.updateable = true;
     }
 
+    public File asFile() {
+        return file;
+    }
+
     public InputStream openInputStream() throws IOException {
         return new FileInputStream( this.file );
     }

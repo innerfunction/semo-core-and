@@ -3,6 +3,7 @@
 	<name>semo-core-and</name>
 	<comment></comment>
 	<projects>
+		<project>google-play-services_lib</project>
 	</projects>
 	<buildSpec>
 		<buildCommand>
