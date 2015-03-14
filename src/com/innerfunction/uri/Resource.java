@@ -150,7 +150,7 @@ public class Resource implements URIResolver {
     public Resource resolveURI(CompoundURI uri, Resource context) {
         return this.resolver.resolveURI( uri, context );
     }
-
+    /*
     @Override
     public boolean dispatchURI(String uri) {
         return dispatchURI( uri, this );
@@ -161,7 +161,7 @@ public class Resource implements URIResolver {
     public boolean dispatchURI(String uri, Resource context) {
         return false;
     }
-    
+    */
     public boolean isUpdateable() {
         return this.updateable;
     }

@@ -1,4 +1,4 @@
-package com.innerfunction.semo.core;
+package com.innerfunction.semo;
 
 import java.net.URISyntaxException;
 import java.util.ArrayList;
@@ -18,7 +18,7 @@ import android.graphics.drawable.Drawable;
 import android.util.DisplayMetrics;
 import android.util.Log;
 
-import com.innerfunction.semo.core.Configuration.ValueType;
+import com.innerfunction.semo.Configuration.ValueType;
 import com.innerfunction.uri.CompoundURI;
 import com.innerfunction.uri.IFAssetManager;
 import com.innerfunction.uri.Resource;
@@ -63,8 +63,8 @@ public class Core extends Resource implements Service, ComponentFactory {
     
     private Core(Context androidContext) {
         super( androidContext );
-        this.assetManager = new IFAssetManager( androidContext );
-        this.standardResolver = new StandardURIResolver( androidContext, this, assetManager );
+        this.standardResolver = StandardURIResolver.getInstance( androidContext );
+        this.assetManager = standardResolver.getAssetManager();
         this.resolver = this.standardResolver; // this.resolver is in Resource super class.
         this.conversions = TypeConversions.instanceForContext( androidContext );
         this.androidContext = androidContext;
@@ -400,7 +400,7 @@ public class Core extends Resource implements Service, ComponentFactory {
                     configuration = new Configuration( (Map<String,Object>)config, CoreInstance, context );
                 }
                 catch(ClassCastException e) {
-                    Log.e(Tag, String.format("Unable to setup EP Core with data type %s", config.getClass().getName() ));
+                    Log.e( Tag, String.format("Unable to setup EP Core with data type %s", config.getClass().getName() ));
                 }
             }
         }

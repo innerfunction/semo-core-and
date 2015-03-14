@@ -1,4 +1,4 @@
-package com.innerfunction.semo.core;
+package com.innerfunction.semo;
 
 public interface Service extends Component {
 

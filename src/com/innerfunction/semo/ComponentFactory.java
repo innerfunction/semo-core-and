@@ -1,4 +1,4 @@
-package com.innerfunction.semo.core;
+package com.innerfunction.semo;
 
 /**
  * Interface of objects able to construct components from component definitions.

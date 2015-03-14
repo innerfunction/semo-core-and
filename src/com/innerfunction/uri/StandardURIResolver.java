@@ -18,20 +18,43 @@ public class StandardURIResolver implements URIResolver {
 
     private static final String LogTag = "URIResolver";
 
+    private static final Map<Context,StandardURIResolver> Instances = new HashMap<Context,StandardURIResolver>();
+    
     /** A map of the registered URI scheme handlers, keyed by scheme name. */
     private Map<String,SchemeHandler> schemeHandlers = new HashMap<String,SchemeHandler>();
     /** The default parent resource. */
     private Resource parentResource;
-
+    /** The asset manager used by the resolver. */
+    private IFAssetManager assetManager;
+    
+    /** Constructor used for context singleton instances. */
+    private StandardURIResolver(Context context) {
+        initialize( context, new Resource( context ), new IFAssetManager( context ) );
+    }
+    
     /** Create a resolver with the default scheme handlers. */
     public StandardURIResolver(Context context, Resource parent, IFAssetManager assetManager) {
+        initialize( context, parent, assetManager );
+    }
+    
+    /** Initialize the URI resolver before use. */
+    public void initialize(Context context, Resource parent) {
+        initialize( context, parent, new IFAssetManager( context ) );
+    }
+    
+    /** Initialize the URI resolver before use. */
+    public void initialize(Context context, Resource parent, IFAssetManager assetManager) {
         this.parentResource = parent;
         this.schemeHandlers.put("s", new StringSchemeHandler( context ) );
         this.schemeHandlers.put("app", new AnRBasedSchemeHandler( context, assetManager ) );
         this.schemeHandlers.put("cache", new FileBasedSchemeHandler( context, FileIO.getCacheDir( context )));
         this.schemeHandlers.put("local", new LocalSchemeHandler( context ));
     }
-
+    
+    public IFAssetManager getAssetManager() {
+        return assetManager;
+    }
+    
     /** Test if a URI scheme has a registered handler with this resolver. */
     public boolean hasHandlerForURIScheme(String scheme) {
         return this.schemeHandlers.containsKey( scheme );
@@ -112,7 +135,7 @@ public class StandardURIResolver implements URIResolver {
         }
         return resource;
     }
-
+/*
     // TODO
     @Override
     public boolean dispatchURI(String uri, Resource parent) {
@@ -123,26 +146,17 @@ public class StandardURIResolver implements URIResolver {
     public boolean dispatchURI(String uri) {
         return dispatchURI( uri, parentResource );
     }
-
+*/
     /**
-     * Add a observer of the specified resource.
-     * The observer will be notified whenever the specified resource is updated.
+     * Return a singleton instance of this class for the specified context.
      */
-    /*
-    public Observer observeResource(Resource resource, ResourceObserver observer) {
-        Observer result = null;
-        CompoundURI uri = resource.getURI();
-        SchemeHandler schemeHandler = this.schemeHandlers.get( uri.getScheme() );
-        if( schemeHandler != null ) {
-            result = schemeHandler.observeResource( resource, observer );
+    public static synchronized StandardURIResolver getInstance(Context context) {
+        StandardURIResolver resolver = Instances.get( context );
+        if( resolver == null ) {
+            resolver = new StandardURIResolver( context );
+            Instances.put( context, resolver );
         }
-        return result;
+        return resolver;
     }
-
-    public void removeResourceObserver(Observer observer) {
-        if( observer != null ) {
-            NotificationCenter.getInstance().removeObserver( observer );
-        }
-    }
-    */
+    
 }
