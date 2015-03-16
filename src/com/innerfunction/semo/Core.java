@@ -1,5 +1,6 @@
 package com.innerfunction.semo;
 
+import java.lang.reflect.Method;
 import java.net.URISyntaxException;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -165,6 +166,81 @@ public class Core extends Resource implements Service, ComponentFactory {
             Log.w( Tag, String.format("Make %s: Component configuration missing 'type' property", id ));
         }
         return result;
+    }
+    
+    public void configure(Object obj, Configuration config) {
+        Class<?> cl = obj.getClass();
+        Map<String,Method> methods = new HashMap<String,Method>();
+        // Generate a map of set methods keyed by name (but setXXX -> xXX)
+        // Only keep one-arg methods. Include arg type in key name, so
+        // setXXX(String) -> xXX:String
+        for( Method method : cl.getMethods() ) {
+            String methodName = method.getName(); 
+            if( methodName.startsWith("set") ) {
+                Class[] argTypes = method.getParameterTypes();
+                if( argTypes.length == 1 ) {
+                    String propName = methodName.substring( 0, 1 ).toLowerCase()+methodName.substring( 1 );
+                    String key = String.format("%s:%s", propName, argTypes[0].getName() );
+                    methods.put( key, method );
+                }
+            }
+        }
+        for( String name : config.getValueNames() ) {
+            try {
+                ValueType type = config.getValueType( name );
+                // Note type == Object => key = *:Configuration
+                String key = String.format("%s:%s", name, type );
+                Method method = methods.get( key );
+                switch( type ) {
+                case Number:
+                    // Will autoboxing handle Number -> int conversions?
+                    method = methods.get( String.format("%s:Number", name ) );
+                    if( method != null ) {
+                        method.invoke( obj, config.getValueAsNumber( name ) );
+                    }
+                    break;
+                case String:
+                    method = methods.get( String.format("%s:String", name ) );
+                    if( method != null ) {
+                        method.invoke( obj, config.getValueAsString( name ) );
+                    }
+                    break;
+                case Object:
+                    method = methods.get( String.format("%s:Configuration", name ) );
+                    if( method != null ) {
+                        method.invoke( obj, config.getValueAsConfiguration( name ) );
+                        break;
+                    }
+                    Object value = makeComponent( config.getValueAsConfiguration( name ), "xxx");
+                    method = methods.get( String.format("%s:%s", name, value.getClass().getName() ) );
+                    if( method != null ) {
+                        method.invoke( obj, value );
+                        break;
+                    }
+                    if( value instanceof Service ) {
+                        method = methods.get( String.format("%s:Service", name ) );
+                        if( method != null ) {
+                            method.invoke( obj, (Service)value );
+                            break;
+                        }
+                    }
+                    if( value instanceof Component ) {
+                        method = methods.get( String.format("%s:Component", name ) );
+                        if( method != null ) {
+                            method.invoke( obj, (Component)value );
+                            break;
+                        }
+                    }
+                    method = methods.get( String.format("%s:Object", name ) );
+                    if( method != null ) {
+                        method.invoke( obj, value );
+                        break;
+                    }
+                    break;
+                }
+            }
+        }
+        // Also, have a IOCConfigurable interface with beforeConfigure and afterConfigure methods
     }
     
     public Service getService(String name) {
@@ -376,7 +452,7 @@ public class Core extends Resource implements Service, ComponentFactory {
     public static Core setupWithConfiguration(Object config, Context context) throws URISyntaxException {
         
         CoreInstance = new Core( context );
-
+        
         Configuration configuration = null;
         if( config instanceof Configuration ) {
             configuration = (Configuration)config;
