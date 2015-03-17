@@ -15,18 +15,14 @@ import android.util.Log;
 import com.google.android.gms.common.ConnectionResult;
 import com.google.android.gms.common.GooglePlayServicesUtil;
 import com.google.android.gms.gcm.GoogleCloudMessaging;
-import com.innerfunction.semo.Component;
-import com.innerfunction.semo.ComponentFactory;
-import com.innerfunction.semo.Configuration;
 import com.innerfunction.semo.ConfiguredLocals;
+import com.innerfunction.semo.Service;
 import com.innerfunction.util.BackgroundTaskRunner;
 
 @SuppressLint("NewApi")
-public class NotificationService {
+public class NotificationService implements Service {
 
     static final String Tag = NotificationService.class.getSimpleName();
-    
-    static final Map<Context,NotificationService> Instances = new HashMap<Context,NotificationService>();
     
     static final int FavouriteNotificationID = 1;
     
@@ -42,26 +38,8 @@ public class NotificationService {
         this.context = context;
     }
     
-    public void configure(Configuration configuration, ComponentFactory factory) {
-        /*
-        this.configuration = configuration;
-        pushNotificationsEnabled = configuration.getValueAsBoolean("pushNotificationsEnabled", false );
-        pushSenderID = configuration.getValueAsString("and:pushSenderID");
-        */
-        localSettings = new ConfiguredLocals("semo.push", configuration );
-        
-        Map<String,Configuration> handlerConfigs = configuration.getValueAsConfigurationMap("handlers");
-        for( String name : handlerConfigs.keySet() ) {
-            String id = String.format("NotificationService.handler.%s", name );
-            Component handler = factory.makeComponent( handlerConfigs.get( name ), id );
-            if( handler instanceof PushMessageHandler ) {
-                messageHandlers.put( name, (PushMessageHandler)handler );
-            }
-            else {
-                Log.w(Tag,String.format("Component %s is not an instance of GCMessageHandler", id ) );
-            }
-        }
-        registerForPushNotifications();
+    public void setMessageHandlers(Map<String,PushMessageHandler> handlers) {
+        messageHandlers.putAll( handlers );
     }
     
     public boolean handleMessageIntent(Intent intent) {
@@ -137,16 +115,13 @@ public class NotificationService {
         }
     }
     
-    /**
-     * Return a singleton instance of this class for the specified context.
-     */
-    public static synchronized NotificationService getInstance(Context context) {
-        NotificationService service = Instances.get( context );
-        if( service == null ) {
-            service = new NotificationService( context );
-            Instances.put( context, service );
-        }
-        return service;
+    @Override
+    public void startService() {
+        registerForPushNotifications();
+    }
+
+    @Override
+    public void stopService() {
     }
     
 }

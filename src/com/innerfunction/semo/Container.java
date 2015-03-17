@@ -111,6 +111,7 @@ public class Container implements Service, Configurable {
      * @param definition    The object's definition.
      * @param id            A string for identifying the object instance in log output.
      */
+    @SuppressWarnings({ "rawtypes", "unchecked" })
     @SuppressLint("DefaultLocale")
     public void configureObject(Object instance, Configuration definition, String id) {
         if( instance instanceof Configurable ) {
@@ -126,7 +127,6 @@ public class Container implements Service, Configurable {
             for( Method method : cl.getMethods() ) {
                 String methodName = method.getName(); 
                 if( methodName.startsWith("set") ) {
-                    @SuppressWarnings("rawtypes")
                     Class[] argTypes = method.getParameterTypes();
                     if( argTypes.length == 1 ) {
                         String propName = methodName.substring( 0, 1 ).toLowerCase()+methodName.substring( 1 );
@@ -155,8 +155,20 @@ public class Container implements Service, Configurable {
                             method.invoke( instance, definition.getValueAsString( name ) );
                         }
                         break;
+                    case List:
+                        if( propType.isAssignableFrom( List.class ) ) {
+                            // TODO: Will there be a need to also handle references to instantiated lists,
+                            // i.e. not lists of configurations, but lists of instantiated objects?
+                            List<Configuration> configs = definition.getValueAsConfigurationList( name );
+                            List instances = new ArrayList( configs.size() );
+                            for(Configuration config : configs ) {
+                                instances.add( makeObject( config, name ) );
+                            }
+                            method.invoke( instance, instances );
+                        }
                     case Object:
                         // TODO: This will need modification to allow "name": "@named:object" type configuration.
+                        // TODO: Also, how to handle maps of configurations? (i.e. similar to config lists as above)
                         Configuration valueConfig = definition.getValueAsConfiguration( name );
                         if( propType.isAssignableFrom( Configuration.class ) ) {
                             method.invoke( instance, valueConfig );
@@ -194,29 +206,37 @@ public class Container implements Service, Configurable {
     
     /**
      * Configure this container.
-     * @param configuration A set of named object definitions. The container will attempt to
-     *                      build an object for each top-level property, and to add that object
-     *                      to its set of named objects.
+     * @param configuration The container configuration. If this has a "named" or "names"
+     *                      property then the container will attempt to build an object for
+     *                      each top-level property, and to add that object to its set of
+     *                      named objects.
      */
     @Override
     public void configure(Configuration configuration) {
-        List<String> names = configuration.getValueNames();
-        Map<String,Configuration> definitions = new HashMap<String,Configuration>();
-        // Initialize named objects.
-        for(String name : names) {
-            Configuration definition = configuration.getValueAsConfiguration( name );
-            Object instance = initObject( definition, name );
-            if( instance != null ) {
-                named.put( name, instance );
-                definitions.put( name, definition );
-            }
+        // Add named objects.
+        Configuration namedConfig = configuration.getValueAsConfiguration("named");
+        if( namedConfig == null ) {
+            namedConfig = configuration.getValueAsConfiguration("names");
         }
-        // Configure named objects.
-        for(String name : names) {
-            Object instance = named.get( name );
-            if( instance != null ) {
-                Configuration definition = definitions.get( name );
-                configureObject( instance, definition, name );
+        if( namedConfig != null ) {
+            List<String> names = namedConfig.getValueNames();
+            Map<String,Configuration> definitions = new HashMap<String,Configuration>();
+            // Initialize named objects.
+            for(String name : names) {
+                Configuration definition = namedConfig.getValueAsConfiguration( name );
+                Object instance = initObject( definition, name );
+                if( instance != null ) {
+                    named.put( name, instance );
+                    definitions.put( name, definition );
+                }
+            }
+            // Configure named objects.
+            for(String name : names) {
+                Object instance = named.get( name );
+                if( instance != null ) {
+                    Configuration definition = definitions.get( name );
+                    configureObject( instance, definition, name );
+                }
             }
         }
     }

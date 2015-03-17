@@ -30,6 +30,8 @@ public class AppContainer extends Container {
     /** Flag indicating whether to force-reset all local settings at app startup. */
     static final boolean ForceResetDefaultSettings = false;
 
+    static AppContainer Instance;
+
     /**
      * A URI resolver.
      * As well as the standard URI schemes, provides a "named" scheme for resolving
@@ -52,20 +54,32 @@ public class AppContainer extends Container {
      * Prefixed with the "semo." namespace.
      */
     private Locals locals;
-
+    /**
+     * A map of Android class configurations, keyed by fully qualified class name.
+     * This provides a mechanism for performing IOC configuration of Android system class
+     * instances, such as Actvities and Receivers, which can't be directly instantiated by
+     * the container. 
+     */
+    private Map<String,Configuration> androidClassConfigs;
+    
     /**
      * Create a new app container.
+     * The container's init() method must be called before it can be used.
+     * @param context   The Android context.
+     */
+    private AppContainer(Context context) {
+        resolver = StandardURIResolver.getInstance( context );
+        androidContext = context;
+    }
+    
+    /**
+     * Initialize the app container by loading a configuration.
      * @param config    An object describing the container's configuration. May be a Configuration
      *                  instance; or a CompoundURI, or a String URI, referencing the configuration.
-     * @param context   The Android context.
      * @throws URISyntaxException If the configuration reference is an invalid URI.
      */
     @SuppressWarnings("unchecked")
-    public AppContainer(Object config, Context context) throws URISyntaxException {
-        
-        resolver = StandardURIResolver.getInstance( context );
-        androidContext = context;
-        
+    public void init(Object config) throws URISyntaxException {
         Configuration configuration = null;
         if( config instanceof Configuration ) {
             configuration = (Configuration)config;
@@ -81,12 +95,12 @@ public class AppContainer extends Container {
             if( uri != null ) {
                 Log.i( Tag, String.format("Setting up app container with URI %s", uri ));
                 Resource resource = resolver.resolveURI( uri );
-                configuration = new Configuration( resource, context );
+                configuration = new Configuration( resource, androidContext );
             }
             else {
                 try {
                     Log.i( Tag, "Attempting to setup app container with data...");
-                    configuration = new Configuration( (Map<String,Object>)config, context );
+                    configuration = new Configuration( (Map<String,Object>)config, androidContext );
                 }
                 catch(ClassCastException e) {
                     Log.e( Tag, String.format("Unable to setup app container with data type %s", config.getClass().getName() ));
@@ -149,14 +163,11 @@ public class AppContainer extends Container {
         named.put("locals", locals );
         named.put("container", this );
         
-        // Add named objects.
-        Configuration namedConfig = configuration.getValueAsConfiguration("named");
-        if( namedConfig == null ) {
-            namedConfig = configuration.getValueAsConfiguration("names");
-        }
-        if( namedConfig != null ) {
-            super.configure( namedConfig );
-        }
+        // Android system class configurations
+        androidClassConfigs = configuration.getValueAsConfigurationMap("and:classes");
+        
+        // Perform default container configuration.
+        super.configure( configuration );
     }
     
     /**
@@ -233,4 +244,24 @@ public class AppContainer extends Container {
         return values;
     }
     
+    /**
+     * Perform IOC configuration on an Android system class instance.
+     * @param instance  An Android class instance.
+     */
+    public void configureAndroid(Object instance) {
+        if( androidClassConfigs != null ) {
+            String className = instance.getClass().getName();
+            Configuration config = androidClassConfigs.get( className );
+            if( config != null ) {
+                configureObject( instance, config, className );
+            }
+        }
+    }
+    
+    public static synchronized AppContainer getAppContainer(Context context) {
+        if( Instance == null ) {
+            Instance = new AppContainer( context );
+        }
+        return Instance;
+    }
 }
