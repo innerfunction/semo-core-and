@@ -18,6 +18,11 @@ import com.innerfunction.uri.StandardURIResolver;
 import com.innerfunction.util.I18nMap;
 import com.innerfunction.util.Locals;
 
+/**
+ * A container providing default app functionality.
+ * @author juliangoacher
+ *
+ */
 public class AppContainer extends Container {
 
     static final String Tag = AppContainer.class.getSimpleName();
@@ -25,11 +30,36 @@ public class AppContainer extends Container {
     /** Flag indicating whether to force-reset all local settings at app startup. */
     static final boolean ForceResetDefaultSettings = false;
 
+    /**
+     * A URI resolver.
+     * As well as the standard URI schemes, provides a "named" scheme for resolving
+     * the app container's named objects; as well as whatever additional schemes are
+     * defined in the "schemes" section of the container's configuration.
+     */
     private StandardURIResolver resolver;
+    /**
+     * The app's Android context.
+     */
     private Context androidContext;
+    /**
+     * A set of global values.
+     * Includes information about the device platform and locale. Available when evaluating
+     * the container configuration.
+     */
     private Map<String,Object> globals;
+    /**
+     * A set of locally stored settings.
+     * Prefixed with the "semo." namespace.
+     */
     private Locals locals;
 
+    /**
+     * Create a new app container.
+     * @param config    An object describing the container's configuration. May be a Configuration
+     *                  instance; or a CompoundURI, or a String URI, referencing the configuration.
+     * @param context   The Android context.
+     * @throws URISyntaxException If the configuration reference is an invalid URI.
+     */
     @SuppressWarnings("unchecked")
     public AppContainer(Object config, Context context) throws URISyntaxException {
         
@@ -64,6 +94,21 @@ public class AppContainer extends Container {
             }
         }
         
+        if( configuration != null ) {
+            configure( configuration );
+        }
+        else {
+            Log.w( Tag, "Unable to resolve configuration");
+        }
+    }
+    
+    /**
+     * Configure this container.
+     */
+    @SuppressWarnings("unchecked")
+    @Override
+    public void configure(Configuration configuration) {
+        // Set object type mappings.
         setTypes( configuration.getValueAsConfiguration("types") );
         
         // Add additional schemes to the resolver/dispatcher.
@@ -104,6 +149,7 @@ public class AppContainer extends Container {
         named.put("locals", locals );
         named.put("container", this );
         
+        // Add named objects.
         Configuration namedConfig = configuration.getValueAsConfiguration("named");
         if( namedConfig == null ) {
             namedConfig = configuration.getValueAsConfiguration("names");
@@ -113,6 +159,11 @@ public class AppContainer extends Container {
         }
     }
     
+    /**
+     * Make the set of global values.
+     * @param configuration
+     * @return
+     */
     private Map<String,Object> makeDefaultGlobalModelValues(Configuration configuration) {
         
         Resources r = androidContext.getResources();

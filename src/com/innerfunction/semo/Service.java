@@ -1,6 +1,11 @@
 package com.innerfunction.semo;
 
-public interface Service extends Component {
+/**
+ * A container object to be started and/or stopped before use.
+ * @author juliangoacher
+ *
+ */
+public interface Service {
 
     public void startService();
     
