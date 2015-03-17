@@ -6,7 +6,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import com.innerfunction.semo.Configuration.ValueType;
+//import com.innerfunction.semo.Configuration.ValueType;
 
 import android.annotation.SuppressLint;
 import android.util.Log;
@@ -135,10 +135,71 @@ public class Container implements Service, Configurable {
                 }
             }
             for( String name : definition.getValueNames() ) {
+                if( name.startsWith(":ios") ) {
+                    continue; // Skip names starting with ios:
+                }
+                if( name.startsWith(":and") ) {
+                    name = name.substring( 4 ); // Strip and: prefix from names
+                }
                 try {
-                    ValueType type = definition.getValueType( name );
                     Method method = methods.get( name );
+                    if( method == null ) {
+                        continue;
+                    }
                     Class<?> propType = method.getParameterTypes()[0];
+                    if( propType == Boolean.class ) {
+                        method.invoke( instance,  definition.getValueAsBoolean( name ) );
+                    }
+                    else if( propType.isAssignableFrom( Number.class ) ) {
+                        method.invoke( instance, definition.getValueAsNumber( name ) );
+                    }
+                    else if( propType.isAssignableFrom( String.class ) ) {
+                        method.invoke( instance, definition.getValueAsString( name ) );
+                    }
+                    else if( propType.isAssignableFrom( List.class ) ) {
+                        List<Configuration> configs = definition.getValueAsConfigurationList( name );
+                        if( configs != null ) {
+                            List instances = new ArrayList( configs.size() );
+                            for(Configuration config : configs ) {
+                                instances.add( makeObject( config, name ) );
+                            }
+                            method.invoke( instance, instances );
+                        }
+                        else {
+                            Object obj = definition.getValue( name );
+                            if( obj != null && propType.isAssignableFrom( obj.getClass() ) ) {
+                                method.invoke( instance, obj );
+                            }
+                        }
+                    }
+                    else if( propType.isAssignableFrom( Map.class ) ) {
+                        Map<String,Configuration> configs = definition.getValueAsConfigurationMap( name );
+                        if( configs != null ) {
+                            Map<String,Object> instances = new HashMap<String,Object>( configs.size() );
+                            for(String iname : configs.keySet() ) {
+                                Configuration iconfig = configs.get( iname );
+                                Object obj = makeObject( iconfig, iname );
+                                if( obj != null ) {
+                                    instances.put( iname, obj );
+                                }
+                            }
+                            method.invoke( instance, instances );
+                        }
+                    }
+                    else {
+                        Configuration config = definition.getValueAsConfiguration( name );
+                        if( propType.isAssignableFrom( Configuration.class ) ) {
+                            method.invoke( instance, config );
+                        }
+                        else {
+                            Object obj = makeObject( config, name );
+                            if( propType.isAssignableFrom( obj.getClass() ) ) {
+                                method.invoke( instance, obj );
+                            }
+                        }
+                    }
+                    /*
+                    ValueType type = definition.getValueType( name );
                     switch( type ) {
                     case Boolean:
                         if( propType.isAssignableFrom( Boolean.class ) ) {
@@ -184,6 +245,7 @@ public class Container implements Service, Configurable {
                     default:
                         break;
                     }
+                    */
                 }
                 catch(Exception e) {
                     Log.e(Tag,String.format("Configuring %s", name ) );
