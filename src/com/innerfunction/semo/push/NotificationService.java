@@ -18,6 +18,8 @@ import com.google.android.gms.gcm.GoogleCloudMessaging;
 import com.innerfunction.semo.ConfiguredLocals;
 import com.innerfunction.semo.Service;
 import com.innerfunction.util.BackgroundTaskRunner;
+import com.innerfunction.util.HTTPUtils;
+import com.innerfunction.util.HTTPUtils.JSONRequestCallback;
 
 @SuppressLint("NewApi")
 public class NotificationService implements Service {
@@ -31,6 +33,8 @@ public class NotificationService implements Service {
     private Context context;
     /** Map of GCM message handlers, keyed by handler name. */
     private Map<String,PushMessageHandler> messageHandlers = new HashMap<String,PushMessageHandler>();
+    /** The server URL to submit registration IDs to. */
+    private String registrationURL;
     /** Locally stored settings. */
     private ConfiguredLocals localSettings;
 
@@ -40,6 +44,10 @@ public class NotificationService implements Service {
     
     public void setMessageHandlers(Map<String,PushMessageHandler> handlers) {
         messageHandlers.putAll( handlers );
+    }
+    
+    public void setRegistrationURL(String url) {
+        registrationURL = url;
     }
     
     public boolean handleMessageIntent(Intent intent) {
@@ -66,6 +74,10 @@ public class NotificationService implements Service {
     }
     
     private void registerForPushNotifications() {
+        if( registrationURL == null ) {
+            Log.w(Tag,"No registration URL specified, can't register for push notifications");
+            return;
+        }
         boolean pushNotificationsEnabled = localSettings.getBoolean("notificationsEnabled");
         if( pushNotificationsEnabled ) {
             int resultCode = GooglePlayServicesUtil.isGooglePlayServicesAvailable( context );
@@ -78,22 +90,27 @@ public class NotificationService implements Service {
                     PackageInfo pinfo = context.getPackageManager().getPackageInfo( context.getPackageName(), 0 );
                     final int currVersion = pinfo.versionCode;
                     // Registration needed if no reg ID found, or app version has changed.
-                    boolean registrationNeeded = regID == null || regVersion != currVersion;
+                    boolean registrationNeeded = (regID == null || regVersion != currVersion);
                     if( registrationNeeded ) {
                         // Register app in background.
                         BackgroundTaskRunner.run(new BackgroundTaskRunner.Task() {
                             @Override
                             public void run() {
-                                String regID;
                                 try {
                                     String pushSenderID = localSettings.getString("senderID");
                                     GoogleCloudMessaging gcm = GoogleCloudMessaging.getInstance( context );
-                                    regID = gcm.register( pushSenderID );
-                                    // TODO: Send registration ID to backend.
-
-                                    // Store the registration ID.
-                                    localSettings.setString("registrationID", regID );
-                                    localSettings.setInt("registrationVersion", currVersion ); 
+                                    final String newRegID = gcm.register( pushSenderID );
+                                    Map<String,Object> data = new HashMap<String,Object>();
+                                    data.put("token", newRegID );
+                                    // Send registration ID to backend.
+                                    HTTPUtils.postJSON( registrationURL, data, new JSONRequestCallback() {
+                                        @Override
+                                        public void receivedJSON(Map<String, Object> json) {
+                                            // Store the registration ID.
+                                            localSettings.setString("registrationID", newRegID );
+                                            localSettings.setInt("registrationVersion", currVersion ); 
+                                        }
+                                    });
                                 }
                                 catch(IOException e) {
                                     Log.e(Tag,"Registering for push notifications", e );
