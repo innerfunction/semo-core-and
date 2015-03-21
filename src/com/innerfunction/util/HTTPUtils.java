@@ -20,6 +20,7 @@ import android.util.Log;
 
 /**
  * Utility methods for download data over HTTP.
+ * TODO: See "Handling Network Sign-On" in http://developer.android.com/reference/java/net/HttpURLConnection.html
  * @author juliangoacher
  *
  */
@@ -89,7 +90,10 @@ public class HTTPUtils {
         });
     }
 
-    /** Post data to the specified URL and receive a JSON response. */
+    /**
+     * Post data to the specified URL and receive a JSON response.
+     * TODO: Review name, suggests that JSON is being posted.
+     */
     public static void postJSON(final String url, final Map<String,Object> data, final JSONRequestCallback callback) throws MalformedURLException {
         final URL _url = new URL( url );
         // Execute the request on a background thread.
@@ -112,13 +116,20 @@ public class HTTPUtils {
                     if( data != null ) {
                         Charset charset = Charset.forName("UTF-8");
                         BufferedOutputStream bos = new BufferedOutputStream( connection.getOutputStream() );
+                        byte[] eq = "=".getBytes("UTF-8");
+                        byte[] amp = "&".getBytes("UTF-8");
                         String token;
+                        boolean separate = false;
                         for( String name : data.keySet() ) {
+                            if( separate ) {
+                                bos.write( amp );
+                            }
                             token = URLEncoder.encode( name, "UTF-8");
                             bos.write( token.getBytes( charset ) );
-                            bos.write('=');
+                            bos.write( eq );
                             token = URLEncoder.encode( data.get( name ).toString(), "UTF-8");
                             bos.write( token.getBytes( charset ) );
+                            separate = true;
                         }
                         bos.write( "\n\n".getBytes( charset ) );
                         bos.flush();
