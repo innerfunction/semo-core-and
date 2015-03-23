@@ -8,6 +8,9 @@ import java.util.Map;
 
 //import com.innerfunction.semo.Configuration.ValueType;
 
+
+import com.innerfunction.uri.Resource;
+
 import android.annotation.SuppressLint;
 import android.util.Log;
 
@@ -185,6 +188,10 @@ public class Container implements Service, Configurable {
                             }
                             method.invoke( instance, instances );
                         }
+                    }
+                    else if( propType.isAssignableFrom( Resource.class ) ) {
+                        Resource rsc = definition.getValueAsResource( name );
+                        method.invoke( instance, rsc );
                     }
                     else {
                         Configuration config = definition.getValueAsConfiguration( name );

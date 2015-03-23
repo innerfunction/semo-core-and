@@ -106,6 +106,7 @@ public class NotificationService implements Service {
                                     HTTPUtils.postJSON( registrationURL, data, new JSONRequestCallback() {
                                         @Override
                                         public void receivedJSON(Map<String, Object> json) {
+                                            // TODO: Check for ok response?
                                             // Store the registration ID.
                                             localSettings.setString("registrationID", newRegID );
                                             localSettings.setInt("registrationVersion", currVersion ); 
