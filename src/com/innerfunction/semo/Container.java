@@ -9,6 +9,7 @@ import java.util.Map;
 //import com.innerfunction.semo.Configuration.ValueType;
 
 
+
 import com.innerfunction.uri.Resource;
 
 import android.annotation.SuppressLint;
@@ -81,7 +82,7 @@ public class Container implements Service, Configurable {
             String className = types.getValueAsString( type );
             if( className != null ) {
                 try {
-                    instance = Class.forName( className ).newInstance();
+                    instance = newInstanceForClass( className );
                 }
                 catch(InstantiationException e) {
                     Log.e( Tag, String.format("Make %s: Error instantiating class %s", id, className ), e );
@@ -101,6 +102,16 @@ public class Container implements Service, Configurable {
             Log.w( Tag, String.format("Make %s: Component configuration missing 'type' property", id ));
         }
         return instance;
+    }
+    
+    /**
+     * Return a new class instance.
+     * @throws ClassNotFoundException 
+     * @throws IllegalAccessException 
+     * @throws InstantiationException 
+     */
+    protected Object newInstanceForClass(String className) throws InstantiationException, IllegalAccessException, ClassNotFoundException {
+        return Class.forName( className ).newInstance();
     }
     
     /**

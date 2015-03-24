@@ -1,5 +1,7 @@
 package com.innerfunction.semo;
 
+import java.lang.reflect.Constructor;
+import java.lang.reflect.InvocationTargetException;
 import java.net.URISyntaxException;
 import java.util.HashMap;
 import java.util.List;
@@ -242,6 +244,20 @@ public class AppContainer extends Container {
         values.put("i18n", new I18nMap( androidContext ) );
         
         return values;
+    }
+    
+    @Override
+    protected Object newInstanceForClass(String className) throws InstantiationException, IllegalAccessException, ClassNotFoundException {
+        Class<?> clss = Class.forName( className );
+        // First test for a class constructor accepting an android context arg.
+        try {
+            Constructor<?> cons = clss.getConstructor( Context.class ); 
+            return cons.newInstance( androidContext );
+        }
+        catch(InvocationTargetException ite) {}
+        catch(NoSuchMethodException nsme) {}
+        // No context constructor found, use default no-arg constructor.
+        return clss.newInstance();
     }
     
     /**
