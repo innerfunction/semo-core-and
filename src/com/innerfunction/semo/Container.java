@@ -143,17 +143,20 @@ public class Container implements Service, Configurable {
                 if( methodName.startsWith("set") ) {
                     Class[] argTypes = method.getParameterTypes();
                     if( argTypes.length == 1 ) {
-                        String propName = methodName.substring( 0, 1 ).toLowerCase()+methodName.substring( 1 );
+                        String baseName = methodName.substring( 3 );
+                        String propName = baseName.substring( 0, 1 ).toLowerCase()+baseName.substring( 1 );
                         methods.put( propName, method );
                     }
                 }
             }
             for( String name : definition.getValueNames() ) {
-                if( name.startsWith(":ios") ) {
-                    continue; // Skip names starting with ios:
+                if( name.startsWith("ios:") || name.equals("type") || name.equals("extends") || name.equals("config") ) {
+                    continue; // Skip names starting with ios:, or configuration reserved words 
                 }
-                if( name.startsWith(":and") ) {
-                    name = name.substring( 4 ); // Strip and: prefix from names
+                if( name.startsWith("and:") || name.startsWith("obj:") ) {
+                    // Strip and: or obj: prefix from names
+                    // The obj: prefix can be used to map properties using configuration reserved words, e.g. obj:type
+                    name = name.substring( 4 );
                 }
                 try {
                     Method method = methods.get( name );
@@ -164,8 +167,20 @@ public class Container implements Service, Configurable {
                     if( propType == Boolean.class ) {
                         method.invoke( instance,  definition.getValueAsBoolean( name ) );
                     }
-                    else if( propType.isAssignableFrom( Number.class ) ) {
-                        method.invoke( instance, definition.getValueAsNumber( name ) );
+                    else if( Number.class.isAssignableFrom( propType ) ) {
+                        Number value = definition.getValueAsNumber( name );
+                        if( propType == Integer.class ) {
+                            method.invoke( instance, value.intValue() );
+                        }
+                        else if( propType == Float.class ) {
+                            method.invoke( instance, value.floatValue() );
+                        }
+                        else if( propType == Double.class ) {
+                            method.invoke( instance, value.doubleValue() );
+                        }
+                        else {
+                            method.invoke( instance, value );
+                        }
                     }
                     else if( propType.isAssignableFrom( String.class ) ) {
                         method.invoke( instance, definition.getValueAsString( name ) );
@@ -178,12 +193,6 @@ public class Container implements Service, Configurable {
                                 instances.add( makeObject( config, name ) );
                             }
                             method.invoke( instance, instances );
-                        }
-                        else {
-                            Object obj = definition.getValue( name );
-                            if( obj != null && propType.isAssignableFrom( obj.getClass() ) ) {
-                                method.invoke( instance, obj );
-                            }
                         }
                     }
                     else if( propType.isAssignableFrom( Map.class ) ) {
@@ -205,65 +214,22 @@ public class Container implements Service, Configurable {
                         method.invoke( instance, rsc );
                     }
                     else {
+                        // General case - map an object value to an object property.
                         Configuration config = definition.getValueAsConfiguration( name );
+                        // If the object property is of type Configuration then just pass the current
+                        // configuration to it.
                         if( propType.isAssignableFrom( Configuration.class ) ) {
                             method.invoke( instance, config );
                         }
                         else {
+                            // Otherwise try instantiating a new object using the config...
                             Object obj = makeObject( config, name );
+                            // ...and assigning it to the object property.
                             if( propType.isAssignableFrom( obj.getClass() ) ) {
                                 method.invoke( instance, obj );
                             }
                         }
                     }
-                    /*
-                    ValueType type = definition.getValueType( name );
-                    switch( type ) {
-                    case Boolean:
-                        if( propType.isAssignableFrom( Boolean.class ) ) {
-                            method.invoke( instance,  definition.getValueAsBoolean( name ) );
-                        }
-                        break;
-                    case Number:
-                        if( propType.isAssignableFrom( Number.class ) ) {
-                            method.invoke( instance, definition.getValueAsNumber( name ) );
-                        }
-                        break;
-                    case String:
-                        if( propType.isAssignableFrom( String.class ) ) {
-                            method.invoke( instance, definition.getValueAsString( name ) );
-                        }
-                        break;
-                    case List:
-                        if( propType.isAssignableFrom( List.class ) ) {
-                            // TODO: Will there be a need to also handle references to instantiated lists,
-                            // i.e. not lists of configurations, but lists of instantiated objects?
-                            List<Configuration> configs = definition.getValueAsConfigurationList( name );
-                            List instances = new ArrayList( configs.size() );
-                            for(Configuration config : configs ) {
-                                instances.add( makeObject( config, name ) );
-                            }
-                            method.invoke( instance, instances );
-                        }
-                    case Object:
-                        // TODO: This will need modification to allow "name": "@named:object" type configuration.
-                        // TODO: Also, how to handle maps of configurations? (i.e. similar to config lists as above)
-                        Configuration valueConfig = definition.getValueAsConfiguration( name );
-                        if( propType.isAssignableFrom( Configuration.class ) ) {
-                            method.invoke( instance, valueConfig );
-                            break;
-                        }
-                        Object value = makeObject( valueConfig, name );
-                        if( propType.isAssignableFrom( value.getClass() ) ) {
-                            method.invoke( instance, value );
-                            break;
-                        }
-                        break;
-                    case Undefined:
-                    default:
-                        break;
-                    }
-                    */
                 }
                 catch(Exception e) {
                     Log.e(Tag,String.format("Configuring %s", name ) );

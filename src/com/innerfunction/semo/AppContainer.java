@@ -31,7 +31,7 @@ public class AppContainer extends Container {
     
     /** Flag indicating whether to force-reset all local settings at app startup. */
     static final boolean ForceResetDefaultSettings = false;
-
+    /** A singleton instance of this class. */
     static AppContainer Instance;
 
     /**
@@ -254,8 +254,8 @@ public class AppContainer extends Container {
             Constructor<?> cons = clss.getConstructor( Context.class ); 
             return cons.newInstance( androidContext );
         }
-        catch(InvocationTargetException ite) {}
         catch(NoSuchMethodException nsme) {}
+        catch(InvocationTargetException ite) {}
         // No context constructor found, use default no-arg constructor.
         return clss.newInstance();
     }
