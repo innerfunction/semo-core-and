@@ -94,6 +94,7 @@ public class AppContainer extends Container {
             else if( config instanceof String ) {
                 uri = new CompoundURI( (String)config );
             }
+            
             if( uri != null ) {
                 Log.i( Tag, String.format("Setting up app container with URI %s", uri ));
                 Resource resource = resolver.resolveURI( uri );
@@ -105,17 +106,11 @@ public class AppContainer extends Container {
                     configuration = new Configuration( (Map<String,Object>)config, androidContext );
                 }
                 catch(ClassCastException e) {
-                    Log.e( Tag, String.format("Unable to setup app container with data type %s", config.getClass().getName() ));
+                    throw new IllegalArgumentException( String.format("Can't resolve configuration from instance of %s", config.getClass() ));
                 }
             }
         }
-        
-        if( configuration != null ) {
-            configure( configuration );
-        }
-        else {
-            Log.w( Tag, "Unable to resolve configuration");
-        }
+        configure( configuration );
     }
     
     /**

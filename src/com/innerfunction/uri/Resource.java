@@ -37,10 +37,11 @@ public class Resource implements URIResolver {
     }
 
     // This constructor intended for use only by Core.
-    protected Resource(Context context) {
+    protected Resource(Context context, URIResolver resolver) {
         this.context = context;
         this.conversions = TypeConversions.instanceForContext( context );
         this.schemeContext = new HashMap<String,CompoundURI>();
+        this.resolver = resolver;
     }
 
     public Resource(Context context, Object item, CompoundURI uri, Resource parent) {

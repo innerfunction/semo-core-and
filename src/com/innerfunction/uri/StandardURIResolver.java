@@ -29,7 +29,7 @@ public class StandardURIResolver implements URIResolver {
     
     /** Constructor used for context singleton instances. */
     private StandardURIResolver(Context context) {
-        initialize( context, new Resource( context ), new IFAssetManager( context ) );
+        initialize( context, new Resource( context, this ), new IFAssetManager( context ) );
     }
     
     /** Create a resolver with the default scheme handlers. */
