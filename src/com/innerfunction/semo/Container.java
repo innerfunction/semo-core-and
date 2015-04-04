@@ -39,7 +39,7 @@ public class Container implements Service, Configurable {
     /**
      * A set of type names mapped to class names.
      */
-    private Configuration types;
+    private Configuration types = Configuration.EmptyConfiguration;
     /** Flag indicating whether the container's services are running. */
     private boolean running;
     
@@ -50,7 +50,7 @@ public class Container implements Service, Configurable {
     
     /** Set the object type mappings. */
     public void setTypes(Configuration types) {
-        this.types = types;
+        this.types = types == null ? Configuration.EmptyConfiguration : types;
     }
     
     /**

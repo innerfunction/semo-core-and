@@ -135,14 +135,16 @@ public class AppContainer extends Container {
             }
         });
         Configuration dispatcherConfig = configuration.getValueAsConfiguration("schemes");
-        for( String schemeName : dispatcherConfig.getValueNames() ) {
-            Configuration schemeConfig  = dispatcherConfig.getValueAsConfiguration( schemeName );
-            Object handler = makeObject( schemeConfig, schemeName );
-            if( handler instanceof SchemeHandler ) {
-                resolver.addHandler( schemeName, (SchemeHandler)handler );
+        if( dispatcherConfig != null ) {
+            for( String schemeName : dispatcherConfig.getValueNames() ) {
+                Configuration schemeConfig  = dispatcherConfig.getValueAsConfiguration( schemeName );
+                Object handler = makeObject( schemeConfig, schemeName );
+                if( handler instanceof SchemeHandler ) {
+                    resolver.addHandler( schemeName, (SchemeHandler)handler );
+                }
             }
         }
-
+        
         // Default local settings.
         this.locals = new Locals("semo");
         Map<String,Object> settings = (Map<String,Object>)configuration.getValue("settings");

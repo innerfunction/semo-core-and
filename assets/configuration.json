@@ -1,0 +1,21 @@
+{
+    "types": {
+        "animal": "com.innerfunction.semo.test.Animal",
+        "color": "com.innerfunction.semo.test.Color",
+        "fruit": "com.innerfunction.semo.test.Fruit"
+    },
+    "names": {
+        "monkey": {
+            "type": "animal",
+            "likes": "@named:banana"
+        },
+        "banana": {
+            "type": "fruit",
+            "color": "@named:yellow"
+        },
+        "yellow": {
+            "type": "color",
+            "value": "#00FFFF"
+        }
+      }
+}

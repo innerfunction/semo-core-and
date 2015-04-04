@@ -113,6 +113,7 @@ public class Configuration extends JSONData {
             this.root = this;
         }
         this.templateContext = parent.templateContext;
+        this.androidContext = parent.androidContext;
         initialize();
     }
     
@@ -278,7 +279,12 @@ public class Configuration extends JSONData {
             value = ((Resource)value).getRepresentation( repr );
         }
         else if(!"json".equals( repr ) ) {
-            value = conversions.asRepresentation( value, repr );
+            if( conversions != null ) {
+                value = conversions.asRepresentation( value, repr );
+            }
+            else {
+                value = null;
+            }
         }
         return value;
     }
