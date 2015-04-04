@@ -4,7 +4,6 @@ import java.io.IOException;
 import java.net.URISyntaxException;
 import android.content.Context;
 import android.test.AndroidTestCase;
-import android.util.Log;
 import com.innerfunction.semo.AppContainer;
 
 public class AppContainerTest extends AndroidTestCase {
@@ -19,10 +18,14 @@ public class AppContainerTest extends AndroidTestCase {
 
     public void testPrueba() throws URISyntaxException, IOException{
         container.init("app:/configuration.json");
-        Animal monkey =(Animal)container.getNamed("monkey");
-        Fruit banana =(Fruit)container.getNamed("banana");
-        Color yellow =(Color)container.getNamed("yellow");
-        assert(monkey.getLikes()=="banana");
-        assert(banana.getColor()=="yellow");
+        Animal monkey = (Animal)container.getNamed("monkey");
+        Fruit banana = (Fruit)container.getNamed("banana");
+        Color yellow = (Color)container.getNamed("yellow");
+        assertNotNull( monkey );
+        assertNotNull( banana );
+        assertNotNull( yellow );
+        assertSame( monkey.getLikes(), banana );
+        assertSame( banana.getColor(), yellow );
+        assertEquals( yellow.getValue(), "#00FFFF");
     }
 }

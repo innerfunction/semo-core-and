@@ -213,21 +213,17 @@ public class Container implements Service, Configurable {
                         Resource rsc = definition.getValueAsResource( name );
                         method.invoke( instance, rsc );
                     }
+                    else if( propType.isAssignableFrom( Configuration.class ) ) {
+                        Configuration config = definition.getValueAsConfiguration( name );
+                        method.invoke( instance, config );
+                    }
                     else {
                         // General case - map an object value to an object property.
-                        Configuration config = definition.getValueAsConfiguration( name );
-                        // If the object property is of type Configuration then just pass the current
-                        // configuration to it.
-                        if( propType.isAssignableFrom( Configuration.class ) ) {
-                            method.invoke( instance, config );
-                        }
-                        else {
-                            // Otherwise try instantiating a new object using the config...
-                            Object obj = makeObject( config, name );
-                            // ...and assigning it to the object property.
-                            if( propType.isAssignableFrom( obj.getClass() ) ) {
-                                method.invoke( instance, obj );
-                            }
+                        // Otherwise try instantiating a new object using the config...
+                        Object obj = definition.getValue( name );
+                        // ...and assigning it to the object property.
+                        if( propType.isAssignableFrom( obj.getClass() ) ) {
+                            method.invoke( instance, obj );
                         }
                     }
                 }

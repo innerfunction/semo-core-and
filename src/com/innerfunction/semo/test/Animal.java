@@ -2,14 +2,14 @@ package com.innerfunction.semo.test;
 
 public class Animal {
 
-    String like;
+    Fruit likes;
     
-    public void setLikes(String like){
-        this.like=like;
+    public void setLikes(Fruit likes) {
+        this.likes = likes;
     }
 
-    public String getLikes(){
-        return like;
+    public Fruit getLikes() {
+        return likes;
     }
-      
+
 }
