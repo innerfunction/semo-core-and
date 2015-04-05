@@ -487,8 +487,8 @@ public class Configuration extends JSONData {
         Configuration current = result;
         // A set of previously visited parent configurations, to detect dependency loops.
         Set<Configuration> visited = new HashSet<Configuration>();
-        while( current.getValueType("extends") == ValueType.Object ) {
-            current = current.getValueAsConfiguration("extends");
+        while( current.getValueType("semo:extends") == ValueType.Object ) {
+            current = current.getValueAsConfiguration("semo:extends");
             if( visited.contains( current ) ) {
                 // Dependency loop detected, stop extending the config.
                 break;
@@ -504,8 +504,8 @@ public class Configuration extends JSONData {
      */
     public Configuration flatten() {
         Configuration result = this;
-        if( getValueType("config") == ValueType.Object ) {
-            result = mergeConfiguration( getValueAsConfiguration("config") );
+        if( getValueType("semo:config") == ValueType.Object ) {
+            result = mergeConfiguration( getValueAsConfiguration("semo:config") );
         }
         return result;
     }

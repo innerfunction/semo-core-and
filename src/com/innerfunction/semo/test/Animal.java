@@ -1,6 +1,6 @@
 package com.innerfunction.semo.test;
 
-public class Animal {
+public class Animal extends Thing {
 
     Fruit likes;
     

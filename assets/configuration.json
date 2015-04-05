@@ -2,20 +2,43 @@
     "types": {
         "animal": "com.innerfunction.semo.test.Animal",
         "color": "com.innerfunction.semo.test.Color",
-        "fruit": "com.innerfunction.semo.test.Fruit"
+        "fruit": "com.innerfunction.semo.test.Fruit",
+        "plant": "com.innerfunction.semo.test.Plant",
+        "forest": "com.innerfunction.semo.test.Forest"
     },
     "names": {
         "monkey": {
-            "type": "animal",
+            "semo:type": "animal",
             "likes": "@named:banana"
         },
         "banana": {
-            "type": "fruit",
+            "semo:type": "fruit",
             "color": "@named:yellow"
         },
         "yellow": {
-            "type": "color",
+            "semo:type": "color",
             "value": "#00FFFF"
+        },
+        "tree": {
+            "semo:type": "plant",
+            "contains": [
+                "@named:monkey",
+                "@named:banana",
+                {
+                    "semo:type": "animal",
+                    "name": "Parrot"
+                }
+            ]
+        },
+        "jungle": {
+            "semo:type": "forest",
+            "thingsInTheForest": {
+                "tree": "@named:tree",
+                "jaguar": {
+                    "semo:type": "animal",
+                    "name": "Jaguar"
+                }
+            }
         }
     }
 }

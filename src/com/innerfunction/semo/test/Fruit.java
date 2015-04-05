@@ -1,6 +1,6 @@
 package com.innerfunction.semo.test;
 
-public class Fruit {
+public class Fruit extends Thing {
 
     Color color;
     

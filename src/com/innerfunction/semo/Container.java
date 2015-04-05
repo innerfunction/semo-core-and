@@ -1,12 +1,16 @@
 package com.innerfunction.semo;
 
 import java.lang.reflect.Method;
+import java.lang.reflect.ParameterizedType;
+import java.lang.reflect.Type;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
 //import com.innerfunction.semo.Configuration.ValueType;
+
+
 
 
 
@@ -71,12 +75,12 @@ public class Container implements Service, Configurable {
     
     /**
      * Instantiate an object from its definition.
-     * @param definition    The object definition. Must include a "type" field.
+     * @param definition    The object definition. Must include a "semo:type" field.
      * @param id            A string for identifying the object instance in log output.
      * @return The new object instance, or null if it can't be instantiated.
      */
     protected Object initObject(Configuration definition, String id) {
-        String type = definition.getValueAsString("type");
+        String type = definition.getValueAsString("semo:type");
         Object instance = null;
         if( type != null ) {
             String className = types.getValueAsString( type );
@@ -99,7 +103,7 @@ public class Container implements Service, Configurable {
             }
         }
         else {
-            Log.w( Tag, String.format("Make %s: Component configuration missing 'type' property", id ));
+            Log.w( Tag, String.format("Make %s: Component configuration missing 'semo:type' property", id ));
         }
         return instance;
     }
@@ -150,12 +154,11 @@ public class Container implements Service, Configurable {
                 }
             }
             for( String name : definition.getValueNames() ) {
-                if( name.startsWith("ios:") || name.equals("type") || name.equals("extends") || name.equals("config") ) {
-                    continue; // Skip names starting with ios:, or configuration reserved words 
+                if( name.startsWith("ios:") || name.startsWith("semo:") ) {
+                    continue; // Skip names starting with ios: or semo: 
                 }
                 if( name.startsWith("and:") || name.startsWith("obj:") ) {
-                    // Strip and: or obj: prefix from names
-                    // The obj: prefix can be used to map properties using configuration reserved words, e.g. obj:type
+                    // Strip and: prefix from names
                     name = name.substring( 4 );
                 }
                 try {
@@ -185,7 +188,16 @@ public class Container implements Service, Configurable {
                     else if( propType.isAssignableFrom( String.class ) ) {
                         method.invoke( instance, definition.getValueAsString( name ) );
                     }
+                    else if( propType.isAssignableFrom( Resource.class ) ) {
+                        Resource rsc = definition.getValueAsResource( name );
+                        method.invoke( instance, rsc );
+                    }
+                    else if( propType.isAssignableFrom( Configuration.class ) ) {
+                        Configuration config = definition.getValueAsConfiguration( name );
+                        method.invoke( instance, config );
+                    }
                     else if( propType.isAssignableFrom( List.class ) ) {
+                        /*
                         List<Configuration> configs = definition.getValueAsConfigurationList( name );
                         if( configs != null ) {
                             List instances = new ArrayList( configs.size() );
@@ -194,8 +206,32 @@ public class Container implements Service, Configurable {
                             }
                             method.invoke( instance, instances );
                         }
+                        */
+                        Object value = definition.getValue( name );
+                        if( value instanceof List ) {
+                            // Resolve the list size, and make a new list to hold the property values.
+                            int length = ((List<?>)value).size();
+                            // TODO: Can/should the list be instantiated here with type params?
+                            List propValues = new ArrayList( length );
+                            // See if the method uses a generic argument type, and if so then use to
+                            // discover the type of the list items.
+                            Class itemType = Object.class;
+                            Type genericArgType = method.getGenericParameterTypes()[0];
+                            if( genericArgType instanceof ParameterizedType ) {
+                                Type[] actualTypes = ((ParameterizedType)genericArgType).getActualTypeArguments();
+                                if( actualTypes.length > 0 ) {
+                                    // e.g. arg is declared as List<String>, so first type parameter is 'String'
+                                    itemType = (Class)actualTypes[0];
+                                }
+                            }
+                            for( int i = 0; i < length; i++ ) {
+                                propValues.add( resolveObjectProperty( itemType, definition, name+"."+i ) );
+                            }
+                            method.invoke( instance, propValues );
+                        }
                     }
                     else if( propType.isAssignableFrom( Map.class ) ) {
+                        /*
                         Map<String,Configuration> configs = definition.getValueAsConfigurationMap( name );
                         if( configs != null ) {
                             Map<String,Object> instances = new HashMap<String,Object>( configs.size() );
@@ -208,16 +244,30 @@ public class Container implements Service, Configurable {
                             }
                             method.invoke( instance, instances );
                         }
-                    }
-                    else if( propType.isAssignableFrom( Resource.class ) ) {
-                        Resource rsc = definition.getValueAsResource( name );
-                        method.invoke( instance, rsc );
-                    }
-                    else if( propType.isAssignableFrom( Configuration.class ) ) {
-                        Configuration config = definition.getValueAsConfiguration( name );
-                        method.invoke( instance, config );
+                        */
+                        Configuration propConfigs = definition.getValueAsConfiguration( name );
+                        if( propConfigs != null ) {
+                            // See if the method uses a generic argument type, and if so then use to
+                            // discover the type of the map items.
+                            Class itemType = Object.class;
+                            Type genericArgType = method.getGenericParameterTypes()[0];
+                            if( genericArgType instanceof ParameterizedType ) {
+                                Type[] actualTypes = ((ParameterizedType)genericArgType).getActualTypeArguments();
+                                if( actualTypes.length > 1 ) {
+                                    // e.g. arg is declared as Map<String,Number> so second type param is 'Number'
+                                    itemType = (Class)actualTypes[1];
+                                }
+                            }
+                            // TODO: Can/should the map be instantiated here with type params?
+                            Map propValues = new HashMap();
+                            for( String valueName : propConfigs.getValueNames() ) {
+                                propValues.put( valueName, resolveObjectProperty( itemType, propConfigs, valueName ) );
+                            }
+                            method.invoke( instance, propValues );
+                        }
                     }
                     else {
+                        /*
                         // General case - map an object value to an object property.
                         // Otherwise try instantiating a new object using the config...
                         Object obj = definition.getValue( name );
@@ -225,6 +275,8 @@ public class Container implements Service, Configurable {
                         if( propType.isAssignableFrom( obj.getClass() ) ) {
                             method.invoke( instance, obj );
                         }
+                        */
+                        method.invoke( instance, resolveObjectProperty( propType, definition, name ) );
                     }
                 }
                 catch(Exception e) {
@@ -244,6 +296,19 @@ public class Container implements Service, Configurable {
                 service.startService();
             }
         }
+    }
+    
+    private Object resolveObjectProperty(Class<?> propType, Configuration definition, String name) {
+        // TODO: Should this method also handle primitive types?
+        Object obj = definition.getValue( name );
+        if( propType.isAssignableFrom( obj.getClass() ) ) {
+            return obj;
+        }
+        if( definition.hasValue( name+".semo:type" ) ) {
+            Configuration propDefinition = definition.getValueAsConfiguration( name );
+            return makeObject( propDefinition, name );
+        }
+        return null;
     }
     
     /**
