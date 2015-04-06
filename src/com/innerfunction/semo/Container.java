@@ -197,21 +197,10 @@ public class Container implements Service, Configurable {
                         method.invoke( instance, config );
                     }
                     else if( propType.isAssignableFrom( List.class ) ) {
-                        /*
-                        List<Configuration> configs = definition.getValueAsConfigurationList( name );
-                        if( configs != null ) {
-                            List instances = new ArrayList( configs.size() );
-                            for(Configuration config : configs ) {
-                                instances.add( makeObject( config, name ) );
-                            }
-                            method.invoke( instance, instances );
-                        }
-                        */
                         Object value = definition.getValue( name );
                         if( value instanceof List ) {
                             // Resolve the list size, and make a new list to hold the property values.
                             int length = ((List<?>)value).size();
-                            // TODO: Can/should the list be instantiated here with type params?
                             List propValues = new ArrayList( length );
                             // See if the method uses a generic argument type, and if so then use to
                             // discover the type of the list items.
@@ -231,20 +220,6 @@ public class Container implements Service, Configurable {
                         }
                     }
                     else if( propType.isAssignableFrom( Map.class ) ) {
-                        /*
-                        Map<String,Configuration> configs = definition.getValueAsConfigurationMap( name );
-                        if( configs != null ) {
-                            Map<String,Object> instances = new HashMap<String,Object>( configs.size() );
-                            for(String iname : configs.keySet() ) {
-                                Configuration iconfig = configs.get( iname );
-                                Object obj = makeObject( iconfig, iname );
-                                if( obj != null ) {
-                                    instances.put( iname, obj );
-                                }
-                            }
-                            method.invoke( instance, instances );
-                        }
-                        */
                         Configuration propConfigs = definition.getValueAsConfiguration( name );
                         if( propConfigs != null ) {
                             // See if the method uses a generic argument type, and if so then use to
@@ -253,29 +228,23 @@ public class Container implements Service, Configurable {
                             Type genericArgType = method.getGenericParameterTypes()[0];
                             if( genericArgType instanceof ParameterizedType ) {
                                 Type[] actualTypes = ((ParameterizedType)genericArgType).getActualTypeArguments();
-                                if( actualTypes.length > 1 ) {
+                                // Check that we have two type parameters, and that the first is assignable from String.
+                                if( actualTypes.length > 1 && ((Class)actualTypes[0]).isAssignableFrom( String.class ) ) {
                                     // e.g. arg is declared as Map<String,Number> so second type param is 'Number'
                                     itemType = (Class)actualTypes[1];
                                 }
                             }
-                            // TODO: Can/should the map be instantiated here with type params?
                             Map propValues = new HashMap();
                             for( String valueName : propConfigs.getValueNames() ) {
-                                propValues.put( valueName, resolveObjectProperty( itemType, propConfigs, valueName ) );
+                                Object value = resolveObjectProperty( itemType, propConfigs, valueName );
+                                if( value != null ) {
+                                    propValues.put( valueName, value );
+                                }
                             }
                             method.invoke( instance, propValues );
                         }
                     }
                     else {
-                        /*
-                        // General case - map an object value to an object property.
-                        // Otherwise try instantiating a new object using the config...
-                        Object obj = definition.getValue( name );
-                        // ...and assigning it to the object property.
-                        if( propType.isAssignableFrom( obj.getClass() ) ) {
-                            method.invoke( instance, obj );
-                        }
-                        */
                         method.invoke( instance, resolveObjectProperty( propType, definition, name ) );
                     }
                 }
