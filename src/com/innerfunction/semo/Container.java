@@ -292,6 +292,8 @@ public class Container implements Service, Configurable {
             Configuration propDefinition = definition.getValueAsConfiguration( name );
             return makeObject( propDefinition, name );
         }
+        // TODO: In this case, can attempt to instantiate an object of the required property type
+        // (i.e. infer the type) and the configure it.
         return null;
     }
     
