@@ -1,11 +1,5 @@
 {
-    "types": {
-        "animal": "com.innerfunction.semo.test.Animal",
-        "color": "com.innerfunction.semo.test.Color",
-        "fruit": "com.innerfunction.semo.test.Fruit",
-        "plant": "com.innerfunction.semo.test.Plant",
-        "forest": "com.innerfunction.semo.test.Forest"
-    },
+    "types": "@app:/{platform.name}/types.json",
     "names": {
         "monkey": {
             "semo:type": "animal",
@@ -19,11 +13,48 @@
             "semo:type": "color",
             "value": "#00FFFF"
         },
+        "display":{
+            "semo:type": "substitutions",
+            "value": "{platform.display}"
+        },
+        "defaultDisplay":{
+            "semo:type": "substitutions",
+            "value": "{platform.defaultDisplay}"
+        },
+        "ConfigurableImplementation": {
+            "semo:type": "ConfigurableImplementation",
+            "value": "one",
+            "value2": "two"
+        },
+        "platformName":{
+            "semo:type": "substitutions",
+            "value": "{platform.name}"
+        },
+        "contextTest": {
+            "semo:type": "contextTest"
+        },
+        "id":{
+            "semo:type": "substitutions",
+            "value": "{locale.id}"
+        },
+        "lang":{
+            "semo:type": "substitutions",
+            "value": "{locale.lang}"
+        },
+        "variant":{
+            "semo:type": "substitutions",
+            "value": "{locale.variant}"
+        },
+        "red":{
+            "semo:type": "color",
+            "value": "#FF0000"
+        },
         "tree": {
             "semo:type": "plant",
             "contains": [
                 "@named:monkey",
                 "@named:banana",
+                "@named:yellow",
                 {
                     "semo:type": "animal",
                     "name": "Parrot"
@@ -34,11 +65,16 @@
             "semo:type": "forest",
             "thingsInTheForest": {
                 "tree": "@named:tree",
+                "red": "@named:red",
                 "jaguar": {
                     "semo:type": "animal",
                     "name": "Jaguar"
                 }
             }
+        },
+        "iocconfigurable": {
+            "semo:type": "IOCConfigurableImplementation",
+            "value": "xxx"
         }
     }
 }

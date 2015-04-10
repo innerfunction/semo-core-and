@@ -119,6 +119,11 @@ public class AppContainer extends Container {
     @SuppressWarnings("unchecked")
     @Override
     public void configure(Configuration configuration) {
+        
+        // Setup template context.
+        globals = makeDefaultGlobalModelValues( configuration );
+        configuration.setTemplateContext( globals );
+
         // Set object type mappings.
         setTypes( configuration.getValueAsConfiguration("types") );
         
@@ -151,10 +156,6 @@ public class AppContainer extends Container {
         if( settings != null ) {
             locals.setValues( settings, ForceResetDefaultSettings );
         }
-
-        // Setup template context.
-        globals = makeDefaultGlobalModelValues( configuration );
-        configuration.setTemplateContext( globals );
 
         named.put("resolver", resolver );
         named.put("androidContext", androidContext );

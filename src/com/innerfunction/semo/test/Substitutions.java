@@ -2,15 +2,10 @@ package com.innerfunction.semo.test;
 
 import android.content.Context;
 
-public class Color {
-
-    String value;
-    Context context;
+public class Substitutions {
     
-    public Color(Context context){
-        this.context=context;
-    }
- 
+    String value;
+    
     public void setValue(String value){
         this.value = value;
     }
@@ -19,7 +14,4 @@ public class Color {
         return value;
     }
     
-    public boolean hasContext(){
-        return context!=null;
-    }
 }

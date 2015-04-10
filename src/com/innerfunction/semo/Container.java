@@ -4,6 +4,7 @@ import java.lang.reflect.Method;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -14,9 +15,14 @@ import java.util.Map;
 
 
 
+
+
+
 import com.innerfunction.uri.Resource;
 
 import android.annotation.SuppressLint;
+import android.graphics.Color;
+import android.graphics.drawable.Drawable;
 import android.util.Log;
 
 /**
@@ -188,6 +194,15 @@ public class Container implements Service, Configurable {
                     else if( propType.isAssignableFrom( String.class ) ) {
                         method.invoke( instance, definition.getValueAsString( name ) );
                     }
+                    else if( propType.isAssignableFrom( Date.class ) ) {
+                        method.invoke( instance, definition.getValueAsDate( name ) );
+                    }
+                    else if( propType.isAssignableFrom( Drawable.class ) ) {
+                        method.invoke( instance, definition.getValueAsImage( name ) );
+                    }
+                    else if( propType.isAssignableFrom( Color.class ) ) {
+                        method.invoke( instance, definition.getValueAsColor( name ) );
+                    }
                     else if( propType.isAssignableFrom( Resource.class ) ) {
                         Resource rsc = definition.getValueAsResource( name );
                         method.invoke( instance, rsc );
@@ -277,6 +292,8 @@ public class Container implements Service, Configurable {
             Configuration propDefinition = definition.getValueAsConfiguration( name );
             return makeObject( propDefinition, name );
         }
+        // TODO: In this case, can attempt to instantiate an object of the required property type
+        // (i.e. infer the type) and the configure it.
         return null;
     }
     

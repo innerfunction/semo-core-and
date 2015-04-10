@@ -1,0 +1,11 @@
+{
+        "animal":                        "com.innerfunction.semo.test.Animal",
+        "color":                         "com.innerfunction.semo.test.Color",
+        "fruit":                         "com.innerfunction.semo.test.Fruit",
+        "plant":                         "com.innerfunction.semo.test.Plant",
+        "forest":                        "com.innerfunction.semo.test.Forest",
+        "substitutions":                 "com.innerfunction.semo.test.Substitutions",
+        "IOCConfigurableImplementation": "com.innerfunction.semo.test.IOCConfigurableImplementation",
+        "ConfigurableImplementation":    "com.innerfunction.semo.test.ConfigurableImplementation",
+        "contextTest":                   "com.innerfunction.semo.test.ContextTest"
+}
