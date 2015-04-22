@@ -66,33 +66,33 @@ public class Container implements Service, Configurable {
     /**
      * Build an object from its definition.
      * Instantiates and configures the object.
-     * @param definition    The object definition.
+     * @param configuration The object configuration.
      * @param id            A string for identifying the object instance in log output.
      * @return The new object instance, or null if it can't be instantiated.
      */
-    public Object makeObject(Configuration definition, String id) {
-        definition = definition.normalize();
-        Object instance = initObject( definition, id );
-        if( instance != null ) {
-            configureObject( instance, definition, id );
+    public Object makeObject(Configuration configuration, String id) {
+        configuration = configuration.normalize();
+        Object object = initObject( configuration, id );
+        if( object != null ) {
+            configureObject( object, configuration, id );
         }
-        return instance;
+        return object;
     }
     
     /**
      * Instantiate an object from its definition.
-     * @param definition    The object definition. Must include a "semo:type" field.
+     * @param configuration The object configuration. Must include a "semo:type" field.
      * @param id            A string for identifying the object instance in log output.
      * @return The new object instance, or null if it can't be instantiated.
      */
-    protected Object initObject(Configuration definition, String id) {
-        String type = definition.getValueAsString("semo:type");
-        Object instance = null;
+    protected Object initObject(Configuration configuration, String id) {
+        Object object = null;
+        String type = configuration.getValueAsString("semo:type");
         if( type != null ) {
             String className = types.getValueAsString( type );
             if( className != null ) {
                 try {
-                    instance = newInstanceForClass( className );
+                    object = newInstanceForClass( className );
                 }
                 catch(InstantiationException e) {
                     Log.e( Tag, String.format("Make %s: Error instantiating class %s", id, className ), e );
@@ -111,7 +111,7 @@ public class Container implements Service, Configurable {
         else {
             Log.w( Tag, String.format("Make %s: Component configuration missing 'semo:type' property", id ));
         }
-        return instance;
+        return object;
     }
     
     /**
@@ -131,21 +131,21 @@ public class Container implements Service, Configurable {
      * definition.
      * If the object implements the IOCConfigurable interface then the beforeConfigure() and afterConfigure()
      * method will be called immediately before and after configuration has taken place.
-     * @param instance      The object to be configured.
-     * @param definition    The object's definition.
+     * @param object        The object to be configured.
+     * @param configuration The object's configuration.
      * @param id            A string for identifying the object instance in log output.
      */
     @SuppressWarnings({ "rawtypes", "unchecked" })
     @SuppressLint("DefaultLocale")
-    public void configureObject(Object instance, Configuration definition, String id) {
-        if( instance instanceof Configurable ) {
-            ((Configurable)instance).configure( definition );
+    public void configureObject(Object object, Configuration configuration, String id) {
+        if( object instanceof Configurable ) {
+            ((Configurable)object).configure( configuration );
         }
         else {
-            if( instance instanceof IOCConfigurable ) {
-                ((IOCConfigurable)instance).beforeConfigure();
+            if( object instanceof IOCConfigurable ) {
+                ((IOCConfigurable)object).beforeConfigure();
             }
-            Class<?> cl = instance.getClass();
+            Class<?> cl = object.getClass();
             Map<String,Method> methods = new HashMap<String,Method>();
             // Generate a map of set methods keyed by name (but setXXX -> xXX)
             for( Method method : cl.getMethods() ) {
@@ -159,11 +159,11 @@ public class Container implements Service, Configurable {
                     }
                 }
             }
-            for( String name : definition.getValueNames() ) {
+            for( String name : configuration.getValueNames() ) {
                 if( name.startsWith("ios:") || name.startsWith("semo:") ) {
                     continue; // Skip names starting with ios: or semo: 
                 }
-                if( name.startsWith("and:") || name.startsWith("obj:") ) {
+                if( name.startsWith("and:") ) {
                     // Strip and: prefix from names
                     name = name.substring( 4 );
                 }
@@ -174,45 +174,45 @@ public class Container implements Service, Configurable {
                     }
                     Class<?> propType = method.getParameterTypes()[0];
                     if( propType == Boolean.class ) {
-                        method.invoke( instance,  definition.getValueAsBoolean( name ) );
+                        method.invoke( object,  configuration.getValueAsBoolean( name ) );
                     }
                     else if( Number.class.isAssignableFrom( propType ) ) {
-                        Number value = definition.getValueAsNumber( name );
+                        Number value = configuration.getValueAsNumber( name );
                         if( propType == Integer.class ) {
-                            method.invoke( instance, value.intValue() );
+                            method.invoke( object, value.intValue() );
                         }
                         else if( propType == Float.class ) {
-                            method.invoke( instance, value.floatValue() );
+                            method.invoke( object, value.floatValue() );
                         }
                         else if( propType == Double.class ) {
-                            method.invoke( instance, value.doubleValue() );
+                            method.invoke( object, value.doubleValue() );
                         }
                         else {
-                            method.invoke( instance, value );
+                            method.invoke( object, value );
                         }
                     }
                     else if( propType.isAssignableFrom( String.class ) ) {
-                        method.invoke( instance, definition.getValueAsString( name ) );
+                        method.invoke( object, configuration.getValueAsString( name ) );
                     }
                     else if( propType.isAssignableFrom( Date.class ) ) {
-                        method.invoke( instance, definition.getValueAsDate( name ) );
+                        method.invoke( object, configuration.getValueAsDate( name ) );
                     }
                     else if( propType.isAssignableFrom( Drawable.class ) ) {
-                        method.invoke( instance, definition.getValueAsImage( name ) );
+                        method.invoke( object, configuration.getValueAsImage( name ) );
                     }
                     else if( propType.isAssignableFrom( Color.class ) ) {
-                        method.invoke( instance, definition.getValueAsColor( name ) );
+                        method.invoke( object, configuration.getValueAsColor( name ) );
                     }
                     else if( propType.isAssignableFrom( Resource.class ) ) {
-                        Resource rsc = definition.getValueAsResource( name );
-                        method.invoke( instance, rsc );
+                        Resource rsc = configuration.getValueAsResource( name );
+                        method.invoke( object, rsc );
                     }
                     else if( propType.isAssignableFrom( Configuration.class ) ) {
-                        Configuration config = definition.getValueAsConfiguration( name );
-                        method.invoke( instance, config );
+                        Configuration config = configuration.getValueAsConfiguration( name );
+                        method.invoke( object, config );
                     }
                     else if( propType.isAssignableFrom( List.class ) ) {
-                        Object value = definition.getValue( name );
+                        Object value = configuration.getValue( name );
                         if( value instanceof List ) {
                             // Resolve the list size, and make a new list to hold the property values.
                             int length = ((List<?>)value).size();
@@ -229,13 +229,13 @@ public class Container implements Service, Configurable {
                                 }
                             }
                             for( int i = 0; i < length; i++ ) {
-                                propValues.add( resolveObjectProperty( itemType, definition, name+"."+i ) );
+                                propValues.add( resolveObjectProperty( itemType, configuration, name+"."+i ) );
                             }
-                            method.invoke( instance, propValues );
+                            method.invoke( object, propValues );
                         }
                     }
                     else if( propType.isAssignableFrom( Map.class ) ) {
-                        Configuration propConfigs = definition.getValueAsConfiguration( name );
+                        Configuration propConfigs = configuration.getValueAsConfiguration( name );
                         if( propConfigs != null ) {
                             // See if the method uses a generic argument type, and if so then use to
                             // discover the type of the map items.
@@ -251,30 +251,30 @@ public class Container implements Service, Configurable {
                             }
                             Map propValues = new HashMap();
                             for( String valueName : propConfigs.getValueNames() ) {
-                                Object value = resolveObjectProperty( itemType, propConfigs, valueName );
-                                if( value != null ) {
-                                    propValues.put( valueName, value );
+                                Object propValue = resolveObjectProperty( itemType, propConfigs, valueName );
+                                if( propValue != null ) {
+                                    propValues.put( valueName, propValue );
                                 }
                             }
-                            method.invoke( instance, propValues );
+                            method.invoke( object, propValues );
                         }
                     }
                     else {
-                        method.invoke( instance, resolveObjectProperty( propType, definition, name ) );
+                        method.invoke( object, resolveObjectProperty( propType, configuration, name ) );
                     }
                 }
                 catch(Exception e) {
                     Log.e(Tag,String.format("Configuring %s", name ) );
                 }
             }
-            if( instance instanceof IOCConfigurable ) {
-                ((IOCConfigurable)instance).afterConfigure();
+            if( object instanceof IOCConfigurable ) {
+                ((IOCConfigurable)object).afterConfigure();
             }
         }
         // If the object instance is a service then add to the list of services, and start the
         // service if the container services are running.
-        if( instance instanceof Service ) {
-            Service service = (Service)instance;
+        if( object instanceof Service ) {
+            Service service = (Service)object;
             services.add( service );
             if( running ) {
                 service.startService();
@@ -282,15 +282,15 @@ public class Container implements Service, Configurable {
         }
     }
     
-    private Object resolveObjectProperty(Class<?> propType, Configuration definition, String name) {
+    private Object resolveObjectProperty(Class<?> propType, Configuration configuration, String name) {
         // TODO: Should this method also handle primitive types?
-        Object obj = definition.getValue( name );
-        if( propType.isAssignableFrom( obj.getClass() ) ) {
-            return obj;
+        Object object = configuration.getValue( name );
+        if( propType.isAssignableFrom( object.getClass() ) ) {
+            return object;
         }
-        if( definition.hasValue( name+".semo:type" ) ) {
-            Configuration propDefinition = definition.getValueAsConfiguration( name );
-            return makeObject( propDefinition, name );
+        if( configuration.hasValue( name+".semo:type" ) ) {
+            Configuration propConfig = configuration.getValueAsConfiguration( name );
+            return makeObject( propConfig, name );
         }
         // TODO: In this case, can attempt to instantiate an object of the required property type
         // (i.e. infer the type) and the configure it.
@@ -313,22 +313,22 @@ public class Container implements Service, Configurable {
         }
         if( namedConfig != null ) {
             List<String> names = namedConfig.getValueNames();
-            Map<String,Configuration> definitions = new HashMap<String,Configuration>();
+            Map<String,Configuration> objConfigs = new HashMap<String,Configuration>();
             // Initialize named objects.
             for(String name : names) {
-                Configuration definition = namedConfig.getValueAsConfiguration( name );
-                Object instance = initObject( definition, name );
-                if( instance != null ) {
-                    named.put( name, instance );
-                    definitions.put( name, definition );
+                Configuration objConfig = namedConfig.getValueAsConfiguration( name );
+                Object object = initObject( objConfig, name );
+                if( object != null ) {
+                    named.put( name, object );
+                    objConfigs.put( name, objConfig );
                 }
             }
             // Configure named objects.
             for(String name : names) {
-                Object instance = named.get( name );
-                if( instance != null ) {
-                    Configuration definition = definitions.get( name );
-                    configureObject( instance, definition, name );
+                Object object = named.get( name );
+                if( object != null ) {
+                    Configuration objConfig = objConfigs.get( name );
+                    configureObject( object, objConfig, name );
                 }
             }
         }
