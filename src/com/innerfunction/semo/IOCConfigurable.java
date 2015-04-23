@@ -8,9 +8,9 @@ package com.innerfunction.semo;
 public interface IOCConfigurable {
 
     /** Called immediately before the object is configured by calls to its properties. */
-    public void beforeConfigure();
+    public void beforeConfigure(Container container);
     
     /** Called immediately after the object is configured by calls to its properties. */
-    public void afterConfigure();
+    public void afterConfigure(Container container);
     
 }

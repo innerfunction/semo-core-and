@@ -76,37 +76,37 @@ public class AppContainer extends Container {
     
     /**
      * Initialize the app container by loading a configuration.
-     * @param config    An object describing the container's configuration. May be a Configuration
+     * @param configSource    An object describing the container's configuration. May be a Configuration
      *                  instance; or a CompoundURI, or a String URI, referencing the configuration.
      * @throws URISyntaxException If the configuration reference is an invalid URI.
      */
     @SuppressWarnings("unchecked")
-    public void init(Object config) throws URISyntaxException {
+    public void loadConfiguration(Object configSource) throws URISyntaxException {
         Configuration configuration = null;
-        if( config instanceof Configuration ) {
-            configuration = (Configuration)config;
+        if( configSource instanceof Configuration ) {
+            configuration = (Configuration)configSource;
         }
         else {
             CompoundURI uri = null;
-            if( config instanceof CompoundURI ) {
-                uri = (CompoundURI)config;
+            if( configSource instanceof CompoundURI ) {
+                uri = (CompoundURI)configSource;
             }
-            else if( config instanceof String ) {
-                uri = new CompoundURI( (String)config );
+            else if( configSource instanceof String ) {
+                uri = new CompoundURI( (String)configSource );
             }
             
             if( uri != null ) {
-                Log.i( Tag, String.format("Setting up app container with URI %s", uri ));
+                Log.i( Tag, String.format("Loading app container configuration from %s", uri ));
                 Resource resource = resolver.resolveURI( uri );
                 configuration = new Configuration( resource, androidContext );
             }
             else {
                 try {
-                    Log.i( Tag, "Attempting to setup app container with data...");
-                    configuration = new Configuration( (Map<String,Object>)config, androidContext );
+                    Log.i( Tag, "Attempting to configure app container with data...");
+                    configuration = new Configuration( (Map<String,Object>)configSource, androidContext );
                 }
                 catch(ClassCastException e) {
-                    throw new IllegalArgumentException( String.format("Can't resolve configuration from instance of %s", config.getClass() ));
+                    throw new IllegalArgumentException( String.format("Can't resolve configuration from instance of %s", configSource.getClass() ));
                 }
             }
         }
@@ -143,7 +143,7 @@ public class AppContainer extends Container {
         if( dispatcherConfig != null ) {
             for( String schemeName : dispatcherConfig.getValueNames() ) {
                 Configuration schemeConfig  = dispatcherConfig.getValueAsConfiguration( schemeName );
-                Object handler = makeObject( schemeConfig, schemeName );
+                Object handler = buildObject( schemeConfig, schemeName );
                 if( handler instanceof SchemeHandler ) {
                     resolver.addHandler( schemeName, (SchemeHandler)handler );
                 }

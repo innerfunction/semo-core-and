@@ -2,6 +2,7 @@ package com.innerfunction.semo.test;
 
 import android.util.Log;
 
+import com.innerfunction.semo.Container;
 import com.innerfunction.semo.IOCConfigurable;
 
 public class IOCConfigurableImplementation implements IOCConfigurable{
@@ -11,12 +12,12 @@ public class IOCConfigurableImplementation implements IOCConfigurable{
     public boolean afterConfigureCalled = false;
     
     @Override
-    public void beforeConfigure() {
+    public void beforeConfigure(Container container) {
         beforeConfigureCalled = (value == null);
     }
     
     @Override
-    public void afterConfigure() {
+    public void afterConfigure(Container container) {
         afterConfigureCalled = (value != null);
     }
 

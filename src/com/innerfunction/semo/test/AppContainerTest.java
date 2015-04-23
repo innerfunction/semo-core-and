@@ -20,7 +20,7 @@ public class AppContainerTest extends AndroidTestCase{
     public void setUp() throws Exception {
         context = getContext();
         container = AppContainer.getAppContainer(context);
-        container.init("app:/configuration.json");
+        container.loadConfiguration("app:/configuration.json");
     }
     
     public void testMonkey() {

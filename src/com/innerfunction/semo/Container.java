@@ -70,9 +70,9 @@ public class Container implements Service, Configurable {
      * @param id            A string for identifying the object instance in log output.
      * @return The new object instance, or null if it can't be instantiated.
      */
-    public Object makeObject(Configuration configuration, String id) {
+    public Object buildObject(Configuration configuration, String id) {
         configuration = configuration.normalize();
-        Object object = initObject( configuration, id );
+        Object object = instantiateObject( configuration, id );
         if( object != null ) {
             configureObject( object, configuration, id );
         }
@@ -85,7 +85,7 @@ public class Container implements Service, Configurable {
      * @param id            A string for identifying the object instance in log output.
      * @return The new object instance, or null if it can't be instantiated.
      */
-    protected Object initObject(Configuration configuration, String id) {
+    protected Object instantiateObject(Configuration configuration, String id) {
         Object object = null;
         String type = configuration.getValueAsString("semo:type");
         if( type != null ) {
@@ -143,7 +143,7 @@ public class Container implements Service, Configurable {
         }
         else {
             if( object instanceof IOCConfigurable ) {
-                ((IOCConfigurable)object).beforeConfigure();
+                ((IOCConfigurable)object).beforeConfigure( this );
             }
             Class<?> cl = object.getClass();
             Map<String,Method> methods = new HashMap<String,Method>();
@@ -268,7 +268,7 @@ public class Container implements Service, Configurable {
                 }
             }
             if( object instanceof IOCConfigurable ) {
-                ((IOCConfigurable)object).afterConfigure();
+                ((IOCConfigurable)object).afterConfigure( this );
             }
         }
         // If the object instance is a service then add to the list of services, and start the
@@ -290,7 +290,7 @@ public class Container implements Service, Configurable {
         }
         if( configuration.hasValue( name+".semo:type" ) ) {
             Configuration propConfig = configuration.getValueAsConfiguration( name );
-            return makeObject( propConfig, name );
+            return buildObject( propConfig, name );
         }
         // TODO: In this case, can attempt to instantiate an object of the required property type
         // (i.e. infer the type) and the configure it.
@@ -317,7 +317,7 @@ public class Container implements Service, Configurable {
             // Initialize named objects.
             for(String name : names) {
                 Configuration objConfig = namedConfig.getValueAsConfiguration( name );
-                Object object = initObject( objConfig, name );
+                Object object = instantiateObject( objConfig, name );
                 if( object != null ) {
                     named.put( name, object );
                     objConfigs.put( name, objConfig );
