@@ -292,9 +292,16 @@ public class Container implements Service, Configurable {
             Configuration propConfig = configuration.getValueAsConfiguration( name );
             return buildObject( propConfig, name );
         }
-        // TODO: In this case, can attempt to instantiate an object of the required property type
-        // (i.e. infer the type) and the configure it.
-        return null;
+        // No semo:type specified in configuration, so try instantiating an inferred type using the class information provided.
+        String className = propType.getName();
+        try {
+            object = newInstanceForClass( className );
+            configureObject( object, configuration, name );
+        }
+        catch(Exception e) {
+            Log.d(Tag, String.format("Failed to instantiate instance of inferred type class %s: %s", className, e ));
+        }
+        return object;
     }
     
     /**
