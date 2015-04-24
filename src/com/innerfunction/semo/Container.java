@@ -92,7 +92,7 @@ public class Container implements Service, Configurable {
             String className = types.getValueAsString( type );
             if( className != null ) {
                 try {
-                    object = newInstanceForClass( className );
+                    object = newInstanceForClassName( className );
                 }
                 catch(InstantiationException e) {
                     Log.e( Tag, String.format("Make %s: Error instantiating class %s", id, className ), e );
@@ -115,12 +115,12 @@ public class Container implements Service, Configurable {
     }
     
     /**
-     * Return a new class instance.
+     * Return a new instance of the named class.
      * @throws ClassNotFoundException 
      * @throws IllegalAccessException 
      * @throws InstantiationException 
      */
-    protected Object newInstanceForClass(String className) throws InstantiationException, IllegalAccessException, ClassNotFoundException {
+    protected Object newInstanceForClassName(String className) throws InstantiationException, IllegalAccessException, ClassNotFoundException {
         return Class.forName( className ).newInstance();
     }
     
@@ -282,10 +282,10 @@ public class Container implements Service, Configurable {
         }
     }
     
-    private Object resolveObjectProperty(Class<?> propType, Configuration configuration, String name) {
+    private Object resolveObjectProperty(Class<?> propClass, Configuration configuration, String name) {
         // TODO: Should this method also handle primitive types?
         Object object = configuration.getValue( name );
-        if( propType.isAssignableFrom( object.getClass() ) ) {
+        if( propClass.isAssignableFrom( object.getClass() ) ) {
             return object;
         }
         if( configuration.hasValue( name+".semo:type" ) ) {
@@ -293,9 +293,9 @@ public class Container implements Service, Configurable {
             return buildObject( propConfig, name );
         }
         // No semo:type specified in configuration, so try instantiating an inferred type using the class information provided.
-        String className = propType.getName();
+        String className = propClass.getName();
         try {
-            object = newInstanceForClass( className );
+            object = newInstanceForClassName( className );
             configureObject( object, configuration, name );
         }
         catch(Exception e) {

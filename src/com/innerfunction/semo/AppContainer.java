@@ -245,7 +245,7 @@ public class AppContainer extends Container {
     }
     
     @Override
-    protected Object newInstanceForClass(String className) throws InstantiationException, IllegalAccessException, ClassNotFoundException {
+    protected Object newInstanceForClassName(String className) throws InstantiationException, IllegalAccessException, ClassNotFoundException {
         Class<?> clss = Class.forName( className );
         // First test for a class constructor accepting an android context arg.
         try {
