@@ -53,6 +53,10 @@ public class Process {
         }
     }
     
+    public Number getPID() {
+        return pid;
+    }
+    
     /**
      * Start the process.
      * Calls the procedure's 'start' step.
@@ -92,6 +96,10 @@ public class Process {
         }
     }
     
+    public void step(String name) {
+        step( name, null );
+    }
+    
     /**
      * Call another procedure from this process.
      * @param procedure
@@ -99,11 +107,15 @@ public class Process {
      */
     public void call(String procedure, String arg) {
         try {
-            choreographer.startProcedure( procedure, arg );
+            choreographer.startProcedure( procedure, arg, false );
         }
         catch(ProcessException e) {
             error( e );
         }
+    }
+    
+    public void call(String procedure) {
+        call( procedure, null );
     }
     
     /**
@@ -116,11 +128,27 @@ public class Process {
     }
     
     /**
+     * Signal process completion with no result.
+     */
+    public void done() {
+        done( null );
+    }
+    
+    /**
      * Signal process failure.
      * @param e
      */
     public void error(Exception e) {
         choreographer.error( pid, e );
+        locals.removeAll();
+    }
+    
+    /**
+     * Signal process failure.
+     * @param message
+     */
+    public void error(String message) {
+        choreographer.error(pid,  new Exception( message ) );
         locals.removeAll();
     }
     

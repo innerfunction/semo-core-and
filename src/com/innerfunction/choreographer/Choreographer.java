@@ -8,6 +8,7 @@ import java.util.Map;
 import android.util.Log;
 
 import com.innerfunction.semo.Service;
+import com.innerfunction.util.BackgroundTaskRunner;
 import com.innerfunction.util.Locals;
 
 /**
@@ -48,17 +49,41 @@ public class Choreographer implements Service {
      * @return The process ID of newly started procedure.
      */
     public synchronized Number startProcedure(String procedureName, String arg) throws ProcessException {
+        return startProcedure( procedureName, arg, true );
+    }
+    
+    /**
+     * Start a named procedure with the specified argument.
+     * TODO: Option to only start a procedure if no process for the same procedure + arg is running?
+     * @param procedureName
+     * @param arg
+     * @param runInBackground
+     * @return The process ID of newly started procedure.
+     */
+    public synchronized Number startProcedure(final String procedureName, final String arg, boolean runInBackground) throws ProcessException {
         Number pid = -1;
         if( procedures.containsKey( procedureName ) ) {
             while( processes.containsKey( pidCounter ) ) {
                 pidCounter++;
             }
             pid = pidCounter;
-            Process process = new Process( pid, this, procedureName );
+            final Process process = new Process( pid, this, procedureName );
             processes.put( pid, process );
             saveProcessIDs();
-            process.start( arg );
-            Log.d(Tag,String.format("Started process %d for procedure %s", pid, procedureName ) );
+            if( runInBackground ) {
+                final Number _pid = pid;
+                BackgroundTaskRunner.run(new BackgroundTaskRunner.Task() {
+                    @Override
+                    public void run() {
+                        process.start( arg );
+                        Log.d(Tag,String.format("Started process %d for procedure %s in background", _pid, procedureName ) );
+                    }
+                });
+            }
+            else {
+                process.start( arg );
+                Log.d(Tag,String.format("Started process %d for procedure %s", pid, procedureName ) );
+            }
         }
         else {
             throw new ProcessException("Procedure %s not found", procedureName );
@@ -135,11 +160,16 @@ public class Choreographer implements Service {
             String[] pids = spids.split(",");
             for( int i = 0; i < pids.length; i++ ) {
                 try {
-                    Number pid = Integer.valueOf( pids[i] );
-                    Process process = new Process( pid, this );
+                    final Number pid = Integer.valueOf( pids[i] );
+                    final Process process = new Process( pid, this );
                     processes.put( pid, process );
-                    process.resume();
-                    Log.d(Tag,String.format("Resumed process %d", pid ));
+                    BackgroundTaskRunner.run(new BackgroundTaskRunner.Task() {
+                        @Override
+                        public void run() {
+                            process.resume();
+                            Log.d(Tag,String.format("Resumed process %d", pid ));
+                        }
+                    });
                 }
                 catch(Exception e) {
                     Log.e(Tag,"Error resuming process", e );
