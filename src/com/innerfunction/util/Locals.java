@@ -1,6 +1,8 @@
 // TODO: Move to com.innerfunction.util
 package com.innerfunction.util;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 
 import android.content.SharedPreferences;
@@ -21,6 +23,10 @@ public class Locals {
     
     public Locals() {
         this.namespacePrefix = "";
+    }
+    
+    public Locals(@SuppressWarnings("rawtypes") Class c) {
+        this( c.getName() );
     }
     
     public void setValues(Map<String,Object> values, boolean forceReset) {
@@ -94,6 +100,18 @@ public class Locals {
             editor.remove( name );
         }
         editor.commit();
+    }
+    
+    public void removeAll() {
+        List<String> names = new ArrayList<String>();
+        for( String name : preferences.getAll().keySet() ) {
+            if( name.startsWith( namespacePrefix ) ) {
+                names.add( name );
+            }
+        }
+        if( names.size() > 0 ) {
+            remove( names.toArray( new String[names.size()] ) );
+        }
     }
     
     private String getKey(String name) {
