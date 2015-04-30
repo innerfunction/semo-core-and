@@ -1,7 +1,5 @@
 package com.innerfunction.semo.test;
 
-import android.util.Log;
-
 import com.innerfunction.semo.Container;
 import com.innerfunction.semo.IOCConfigurable;
 

@@ -1,7 +1,5 @@
 package com.innerfunction.semo.test;
 
-import android.content.Context;
-
 public class Substitutions {
     
     String value;

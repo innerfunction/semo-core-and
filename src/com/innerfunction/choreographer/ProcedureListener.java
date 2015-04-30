@@ -7,6 +7,12 @@ package com.innerfunction.choreographer;
  */
 public interface ProcedureListener {
 
-    public void procedureCompleted(String procedure, Number pid, String result);
+    /**
+     * Receive notification of a procedure's completion.
+     * @param procedureName The name of the completed procedure.
+     * @param pid           The process ID of the completed procedure.
+     * @param result        The procedure result.
+     */
+    public void procedureCompleted(String procedureName, Number pid, String result);
     
 }

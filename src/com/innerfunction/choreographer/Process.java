@@ -58,14 +58,14 @@ public class Process {
      * Calls the procedure's 'start' step.
      * @param arg
      */
-    public void start(String arg) {
+    protected void start(String arg) {
         step("start", arg );
     }
     
     /**
      * Resume the process from its last recorded step.
      */
-    public void resume() {
+    protected void resume() {
         String step = locals.getString("$step");
         if( step != null ) {
             String arg = locals.getString("$arg");

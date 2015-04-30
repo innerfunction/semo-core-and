@@ -182,6 +182,7 @@ public class TypeConversions {
      * Convert value to an image:
      *  * -> String -> Drawable (string interpreted as image resource name; if not found, then as asset name). 
      */
+    @SuppressWarnings("deprecation")
     public Drawable asImage(Object value) {
         Drawable result = null;
         if( value != null && this.context != null && this.r != null ) {
