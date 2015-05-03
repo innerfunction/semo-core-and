@@ -1,5 +1,12 @@
 package com.innerfunction.choreographer;
 
+import java.util.List;
+import java.util.Map;
+
+import org.json.simple.JSONArray;
+import org.json.simple.JSONObject;
+import org.json.simple.JSONValue;
+
 import com.innerfunction.util.Locals;
 
 /**
@@ -60,62 +67,92 @@ public class Process {
     /**
      * Start the process.
      * Calls the procedure's 'start' step.
-     * @param arg
+     * @param args
      */
-    protected void start(String arg) {
-        step("start", arg );
+    protected void start(Object... args) {
+        step("start", args );
+    }
+    
+    /** Test whether the interrupted process is waiting for a procedure call return. */ 
+    protected boolean isWaiting() {
+        return locals.getString("$wait") != null;
+    }
+    
+    /**
+     * Resume the process from its wait state.
+     */
+    @SuppressWarnings("rawtypes")
+    protected void resumeWait() {
+        String waitJSON = locals.getString("$wait");
+        if( waitJSON != null ) {
+            Map waitData = (Map)JSONValue.parse( waitJSON );
+            Number pid = (Number)waitData.get("pid");
+            choreographer.setWaitingProcess( this, pid );
+        }
     }
     
     /**
      * Resume the process from its last recorded step.
      */
+    @SuppressWarnings("rawtypes")
     protected void resume() {
-        String step = locals.getString("$step");
-        if( step != null ) {
-            String arg = locals.getString("$arg");
-            step( step, arg );
-        }
-        else {
-            done( null );
+        if( !isWaiting() ) {
+            String stepJSON = locals.getString("$step");
+            if( stepJSON != null ) {
+                Map stepData = (Map)JSONValue.parse( stepJSON );
+                String step = (String)stepData.get("step");
+                Object args = ((List)stepData.get("args")).toArray();
+                step( step, args );
+            }
+            else {
+                done();
+            }
         }
     }
     
     /**
      * Execute a step in the procedure.
      * @param name
-     * @param arg
+     * @param args
      */
-    public void step(String name, String arg) {
+    @SuppressWarnings("unchecked")
+    public void step(String name, Object... args) {
         try {
-            locals.setString("$step", name );
-            locals.setString("$arg", arg );
-            procedure.step( name, arg, this );
+            JSONObject stepData = new JSONObject();
+            stepData.put("step", name );
+            JSONArray stepArgs  = new JSONArray();
+            if( args != null ) {
+                for( Object arg : args ) {
+                    stepArgs.add( arg );
+                }
+            }
+            stepData.put("args", stepArgs );
+            locals.setString("$step", stepData.toJSONString() );
+            procedure.step( this, name, args );
         }
         catch(Exception e) {
             error( e );
         }
     }
     
-    public void step(String name) {
-        step( name, null );
-    }
-    
     /**
      * Call another procedure from this process.
      * @param procedure
-     * @param arg
+     * @param contStep
+     * @param args
      */
-    public void call(String procedure, String arg) {
+    @SuppressWarnings("unchecked")
+    public void call(String procedure, String contStep, Object... args) {
         try {
-            choreographer.startProcedure( procedure, arg, false );
+            Number pid = choreographer.startProcedure( this, procedure, args );
+            JSONObject waitData = new JSONObject();
+            waitData.put("pid", pid );
+            waitData.put("cont", contStep );
+            locals.setString("$wait", waitData.toJSONString() );
         }
         catch(ProcessException e) {
             error( e );
         }
-    }
-    
-    public void call(String procedure) {
-        call( procedure, null );
     }
     
     /**
@@ -150,6 +187,21 @@ public class Process {
     public void error(String message) {
         choreographer.error(pid,  new Exception( message ) );
         locals.removeAll();
+    }
+    
+    /**
+     * Receive notification that the child process that this process is waiting for has completed.
+     * @param result
+     */
+    @SuppressWarnings("rawtypes")
+    protected void childProcessCompleted(Object result) {
+        String waitJSON = locals.getString("$wait");
+        if( waitJSON != null ) {
+            Map waitData = (Map)JSONValue.parse( waitJSON );
+            String contStep = (String)waitData.get("cont");
+            step( contStep, result );
+            locals.remove("$wait");
+        }
     }
     
     /**

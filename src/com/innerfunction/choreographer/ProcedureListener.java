@@ -13,6 +13,6 @@ public interface ProcedureListener {
      * @param pid           The process ID of the completed procedure.
      * @param result        The procedure result.
      */
-    public void procedureCompleted(String procedureName, Number pid, String result);
+    public void procedureCompleted(String procedureName, Number pid, Object result);
     
 }

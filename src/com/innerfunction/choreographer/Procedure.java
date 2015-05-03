@@ -20,11 +20,10 @@ package com.innerfunction.choreographer;
 public interface Procedure {
 
     /**
-     * Execute a procedure step.
-     * @param step      The name of the step to execute.
-     * @param arg       The step argument.
+     * Exectute a procedure step.
      * @param process   The process executing the procedure.
+     * @param step      The name of the step to execute.
+     * @param args      The step arguments.
      */
-    public void step(String step, String arg, Process process);
-    
+    public void step(Process process, String step, Object... args);
 }

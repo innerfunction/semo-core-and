@@ -4,9 +4,8 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-
+import android.annotation.SuppressLint;
 import android.util.Log;
-
 import com.innerfunction.semo.Service;
 import com.innerfunction.util.BackgroundTaskRunner;
 import com.innerfunction.util.Locals;
@@ -18,6 +17,7 @@ import com.innerfunction.util.Locals;
  * @author juliangoacher
  *
  */
+@SuppressLint("DefaultLocale")
 public class Choreographer implements Service {
 
     static final String Tag = Choreographer.class.getSimpleName();
@@ -26,7 +26,9 @@ public class Choreographer implements Service {
     private Map<String,Procedure> procedures;
     /** A map of running processes, keyed by process ID. */
     private Map<Number,Process> processes = new HashMap<Number,Process>();
-    /** A list of registered procedure listeners. */
+    /** A map of waiting processes, keyed by the ID of the process they are waiting for. */
+    private Map<Number,Process> waiting = new HashMap<Number,Process>();
+    /** A map of lists of registered procedure listeners. */
     private Map<String,List<ProcedureListener>> listeners;
     /** Local storage, used to record list of running processes. */
     private Locals locals = new Locals( Choreographer.class );
@@ -42,46 +44,58 @@ public class Choreographer implements Service {
     }
     
     /**
-     * Start a named procedure with the specified argument.
+     * Start a named procedure with the specified arguments.
      * TODO: Option to only start a procedure if no process for the same procedure + arg is running?
      * @param procedureName
-     * @param arg
+     * @param args
      * @return The process ID of newly started procedure.
      */
-    public synchronized Number startProcedure(String procedureName, String arg) throws ProcessException {
-        return startProcedure( procedureName, arg, true );
+    public Number startProcedure(String procedureName, Object... args) throws ProcessException {
+        return startProcedure( procedureName, true, args );
     }
     
     /**
-     * Start a named procedure with the specified argument.
+     * Start a named procedure with the specified parent process and arguments.
+     */
+    public Number startProcedure(Process parent, String procedureName, Object...args) throws ProcessException {
+        Number pid = startProcedure( procedureName, false, args );
+        setWaitingProcess( parent, pid );
+        return pid;
+    }
+    
+    /**
+     * Start a named procedure with the specified arguments.
      * TODO: Option to only start a procedure if no process for the same procedure + arg is running?
      * @param procedureName
      * @param arg
      * @param runInBackground
      * @return The process ID of newly started procedure.
      */
-    public synchronized Number startProcedure(final String procedureName, final String arg, boolean runInBackground) throws ProcessException {
+    public synchronized Number startProcedure(final String procedureName, boolean runInBackground, final Object... args) throws ProcessException {
         Number pid = -1;
         if( procedures.containsKey( procedureName ) ) {
+            // Find next free process number.
             while( processes.containsKey( pidCounter ) ) {
                 pidCounter++;
             }
             pid = pidCounter;
+            // Create and record the process.
             final Process process = new Process( pid, this, procedureName );
             processes.put( pid, process );
             saveProcessIDs();
+            // Start the process.
             if( runInBackground ) {
                 final Number _pid = pid;
                 BackgroundTaskRunner.run(new BackgroundTaskRunner.Task() {
                     @Override
                     public void run() {
-                        process.start( arg );
+                        process.start( args );
                         Log.d(Tag,String.format("Started process %d for procedure %s in background", _pid, procedureName ) );
                     }
                 });
             }
             else {
-                process.start( arg );
+                process.start( args );
                 Log.d(Tag,String.format("Started process %d for procedure %s", pid, procedureName ) );
             }
         }
@@ -96,13 +110,21 @@ public class Choreographer implements Service {
      * @param pid
      * @param result
      */
-    public synchronized void done(Number pid, String result) {
+    public synchronized void done(Number pid, Object result) {
         Process process = processes.get( pid );
         if( process != null ) {
+            // Notify the waiting parent process, if any.
+            Process parent = waiting.get( pid );
+            if( parent != null ) {
+                parent.childProcessCompleted( result );
+                waiting.remove( pid );
+            }
+            // Notify listeners.
             List<ProcedureListener> plist = listeners.get( process.procedureName );
             for( ProcedureListener listener : plist ) {
                 listener.procedureCompleted( process.procedureName, pid, result );
             }
+            // Remove the process.
             processes.remove( process.pid );
             saveProcessIDs();
             Log.d(Tag,String.format("Process %d completed",  process.pid ));
@@ -117,6 +139,12 @@ public class Choreographer implements Service {
     public synchronized void error(Number pid, Exception e) {
         Process process = processes.get( pid );
         if( process != null ) {
+            Process parent = waiting.get( pid );
+            if( parent != null ) {
+                String errMsg = String.format("Child process %d failed", pid );
+                parent.error( new ProcessException( errMsg ) );
+                waiting.remove( pid );
+            }
             processes.remove( process.pid );
             saveProcessIDs();
         }
@@ -150,6 +178,15 @@ public class Choreographer implements Service {
     }
 
     /**
+     * Set a waiting process.
+     * @param process The waiting process.
+     * @param pid     The ID of the process being waited for.
+     */
+    public void setWaitingProcess(Process process, Number pid) {
+        waiting.put( pid, process );
+    }
+    
+    /**
      * Start the choreographer.
      * Resumes any interrupted processes.
      */
@@ -158,16 +195,30 @@ public class Choreographer implements Service {
         String spids = locals.getString("pids");
         if( spids != null ) {
             String[] pids = spids.split(",");
-            for( int i = 0; i < pids.length; i++ ) {
+            final List<Process> retreivedProcesses = new ArrayList<Process>();
+            int i;
+            // Build list of retreived processes & resume their waiting status.
+            for( i = 0; i < pids.length; i++ ) {
                 try {
-                    final Number pid = Integer.valueOf( pids[i] );
-                    final Process process = new Process( pid, this );
+                    Number pid = Integer.valueOf( i );
+                    Process process = new Process( pid, this );
                     processes.put( pid, process );
+                    retreivedProcesses.add( process );
+                    process.resumeWait();
+                }
+                catch(Exception e) {
+                    Log.e(Tag,"Error resuming process wait", e );
+                }
+            }
+            // Resume all retreived processes.
+            for( i = 0; i < pids.length; i++ ) {
+                try {
+                    final Process process = retreivedProcesses.get( i );
                     BackgroundTaskRunner.run(new BackgroundTaskRunner.Task() {
                         @Override
                         public void run() {
                             process.resume();
-                            Log.d(Tag,String.format("Resumed process %d", pid ));
+                            Log.d(Tag,String.format("Resumed process %d", process.pid ));
                         }
                     });
                 }
