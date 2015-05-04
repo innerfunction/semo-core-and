@@ -27,9 +27,11 @@ public class Choreographer implements Service {
     /** A map of running processes, keyed by process ID. */
     private Map<Number,Process> processes = new HashMap<Number,Process>();
     /** A map of waiting processes, keyed by the ID of the process they are waiting for. */
-    private Map<Number,Process> waiting = new HashMap<Number,Process>();
+    private Map<Number,List<Process>> waiting = new HashMap<Number,List<Process>>();
     /** A map of lists of registered procedure listeners. */
     private Map<String,List<ProcedureListener>> listeners;
+    /** A map of process IDs keyed by procedure identity. */
+    private Map<String,Number> processIDsByProcedureID = new HashMap<String,Number>();
     /** Local storage, used to record list of running processes. */
     private Locals locals = new Locals( Choreographer.class );
     /** Process ID counter. */
@@ -45,7 +47,6 @@ public class Choreographer implements Service {
     
     /**
      * Start a named procedure with the specified arguments.
-     * TODO: Option to only start a procedure if no process for the same procedure + arg is running?
      * @param procedureName
      * @param args
      * @return The process ID of newly started procedure.
@@ -59,20 +60,24 @@ public class Choreographer implements Service {
      */
     public Number startProcedure(Process parent, String procedureName, Object...args) throws ProcessException {
         Number pid = startProcedure( procedureName, false, args );
-        setWaitingProcess( parent, pid );
+        addWaitingProcess( parent, pid );
         return pid;
     }
     
     /**
      * Start a named procedure with the specified arguments.
-     * TODO: Option to only start a procedure if no process for the same procedure + arg is running?
      * @param procedureName
      * @param arg
      * @param runInBackground
      * @return The process ID of newly started procedure.
      */
     public synchronized Number startProcedure(final String procedureName, boolean runInBackground, final Object... args) throws ProcessException {
-        Number pid = -1;
+        String procedureID = Process.makeProcedureID( procedureName, args );
+        Number pid = processIDsByProcedureID.get( procedureID );
+        if( pid != null ) {
+            // Found an equivalent process already running, return its process ID instead of starting a new one.
+            return pid;
+        }
         if( procedures.containsKey( procedureName ) ) {
             // Find next free process number.
             while( processes.containsKey( pidCounter ) ) {
@@ -80,7 +85,7 @@ public class Choreographer implements Service {
             }
             pid = pidCounter;
             // Create and record the process.
-            final Process process = new Process( pid, this, procedureName );
+            final Process process = new Process( pid, this, procedureName, procedureID );
             processes.put( pid, process );
             saveProcessIDs();
             // Start the process.
@@ -113,10 +118,12 @@ public class Choreographer implements Service {
     public synchronized void done(Number pid, Object result) {
         Process process = processes.get( pid );
         if( process != null ) {
-            // Notify the waiting parent process, if any.
-            Process parent = waiting.get( pid );
-            if( parent != null ) {
-                parent.childProcessCompleted( result );
+            // Notify the waiting parent processes, if any.
+            List<Process> parents = waiting.get( pid );
+            if( parents != null ) {
+                for( Process parent : parents ) {
+                    parent.childProcessCompleted( result );
+                }
                 waiting.remove( pid );
             }
             // Notify listeners.
@@ -125,6 +132,8 @@ public class Choreographer implements Service {
                 listener.procedureCompleted( process.procedureName, pid, result );
             }
             // Remove the process.
+            String procedureID = process.getProcedureID();
+            processIDsByProcedureID.remove( procedureID );
             processes.remove( process.pid );
             saveProcessIDs();
             Log.d(Tag,String.format("Process %d completed",  process.pid ));
@@ -139,12 +148,17 @@ public class Choreographer implements Service {
     public synchronized void error(Number pid, Exception e) {
         Process process = processes.get( pid );
         if( process != null ) {
-            Process parent = waiting.get( pid );
-            if( parent != null ) {
+            List<Process> parents = waiting.get( pid );
+            if( parents != null ) {
                 String errMsg = String.format("Child process %d failed", pid );
-                parent.error( new ProcessException( errMsg ) );
+                ProcessException pe = new ProcessException( errMsg ); 
+                for( Process parent : parents ) {
+                    parent.error( pe );
+                }
                 waiting.remove( pid );
             }
+            String procedureID = process.getProcedureID();
+            processIDsByProcedureID.remove( procedureID );
             processes.remove( process.pid );
             saveProcessIDs();
         }
@@ -178,12 +192,17 @@ public class Choreographer implements Service {
     }
 
     /**
-     * Set a waiting process.
+     * Add a waiting process.
      * @param process The waiting process.
      * @param pid     The ID of the process being waited for.
      */
-    public void setWaitingProcess(Process process, Number pid) {
-        waiting.put( pid, process );
+    public void addWaitingProcess(Process process, Number pid) {
+        List<Process> processes = waiting.get( pid );
+        if( processes == null ) {
+            processes = new ArrayList<Process>();
+            waiting.put( pid, processes );
+        }
+        processes.add( process );
     }
     
     /**
@@ -197,7 +216,12 @@ public class Choreographer implements Service {
             String[] pids = spids.split(",");
             final List<Process> retreivedProcesses = new ArrayList<Process>();
             int i;
-            // Build list of retreived processes & resume their waiting status.
+            // Build list of retrieved processes & resume their waiting status.
+            // TODO: Should processes have a maximum TTL? To avoid the build up of large
+            // numbers of stalled processes over time (because otherwise, these are potentially
+            // immortal).
+            // This could be done by modifying the pids local to be a JSON object of pids mapped
+            // to process start times in ms.
             for( i = 0; i < pids.length; i++ ) {
                 try {
                     Number pid = Integer.valueOf( i );
@@ -210,7 +234,7 @@ public class Choreographer implements Service {
                     Log.e(Tag,"Error resuming process wait", e );
                 }
             }
-            // Resume all retreived processes.
+            // Resume all retrieved processes.
             for( i = 0; i < pids.length; i++ ) {
                 try {
                     final Process process = retreivedProcesses.get( i );

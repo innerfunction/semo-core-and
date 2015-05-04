@@ -5,6 +5,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
+import org.json.simple.JSONValue;
+
 import android.content.SharedPreferences;
 
 /**
@@ -47,6 +49,16 @@ public class Locals {
             }
         }
         editor.commit();
+    }
+    
+    public Object getJSON(String name) {
+        String json = getString( name );
+        return json != null ? JSONValue.parse( json ) : null;
+    }
+    
+    public void setJSON(String name, Object data) {
+        String json = data != null ? JSONValue.toJSONString( data ) : null;
+        setString( name, json );
     }
     
     public String getString(String name) {

@@ -5,7 +5,6 @@ import java.util.Map;
 
 import org.json.simple.JSONArray;
 import org.json.simple.JSONObject;
-import org.json.simple.JSONValue;
 
 import com.innerfunction.util.Locals;
 
@@ -33,12 +32,13 @@ public class Process {
      * @param choreographer
      * @param procedureName
      */
-    public Process(Number pid, Choreographer choreographer, String procedureName) {
+    public Process(Number pid, Choreographer choreographer, String procedureName, String procedureID) {
         this.pid = pid;
         this.choreographer = choreographer;
         this.procedureName = procedureName;
         procedure = choreographer.getProcedure( procedureName );
         locals = new Locals( String.format("%s.%s", Process.class.getName(), pid ) );
+        locals.setString("procedureID", procedureID ); 
     }
 
     /**
@@ -46,10 +46,16 @@ public class Process {
      * @param pid
      * @param choreographer
      */
+    @SuppressWarnings("rawtypes")
     public Process(Number pid, Choreographer choreographer) throws ProcessException {
         this.pid = pid;
         this.choreographer = choreographer;
         locals = new Locals( String.format("%s.%s", Process.class.getName(), pid ) );
+        Map procIDData = (Map)locals.getJSON("procedureID");
+        if( procIDData == null ) {
+            throw new ProcessException("No procedure identity data found for resumed process");
+        }
+        procedureName = (String)procIDData.get("name");
         procedureName = locals.getString("procedureName");
         if( procedureName == null ) {
             throw new ProcessException("No procedure name found for resumed process");
@@ -62,6 +68,10 @@ public class Process {
     
     public Number getPID() {
         return pid;
+    }
+    
+    public String getProcedureID() {
+        return locals.getString("procedureID");
     }
     
     /**
@@ -83,11 +93,10 @@ public class Process {
      */
     @SuppressWarnings("rawtypes")
     protected void resumeWait() {
-        String waitJSON = locals.getString("$wait");
-        if( waitJSON != null ) {
-            Map waitData = (Map)JSONValue.parse( waitJSON );
+        Map waitData = (Map)locals.getJSON("$wait");
+        if( waitData != null ) {
             Number pid = (Number)waitData.get("pid");
-            choreographer.setWaitingProcess( this, pid );
+            choreographer.addWaitingProcess( this, pid );
         }
     }
     
@@ -97,9 +106,8 @@ public class Process {
     @SuppressWarnings("rawtypes")
     protected void resume() {
         if( !isWaiting() ) {
-            String stepJSON = locals.getString("$step");
-            if( stepJSON != null ) {
-                Map stepData = (Map)JSONValue.parse( stepJSON );
+            Map stepData = (Map)locals.getJSON("$step");
+            if( stepData != null ) {
                 String step = (String)stepData.get("step");
                 Object args = ((List)stepData.get("args")).toArray();
                 step( step, args );
@@ -127,8 +135,8 @@ public class Process {
                 }
             }
             stepData.put("args", stepArgs );
-            locals.setString("$step", stepData.toJSONString() );
-            procedure.step( this, name, args );
+            locals.setJSON("$step", stepData );
+            procedure.run( this, name, args );
         }
         catch(Exception e) {
             error( e );
@@ -148,7 +156,7 @@ public class Process {
             JSONObject waitData = new JSONObject();
             waitData.put("pid", pid );
             waitData.put("cont", contStep );
-            locals.setString("$wait", waitData.toJSONString() );
+            locals.setJSON("$wait", waitData );
         }
         catch(ProcessException e) {
             error( e );
@@ -184,7 +192,10 @@ public class Process {
      * Signal process failure.
      * @param message
      */
-    public void error(String message) {
+    public void error(String message, Object... params) {
+        if( params.length > 0 ) {
+            message = String.format( message, params );
+        }
         choreographer.error(pid,  new Exception( message ) );
         locals.removeAll();
     }
@@ -195,9 +206,8 @@ public class Process {
      */
     @SuppressWarnings("rawtypes")
     protected void childProcessCompleted(Object result) {
-        String waitJSON = locals.getString("$wait");
-        if( waitJSON != null ) {
-            Map waitData = (Map)JSONValue.parse( waitJSON );
+        Map waitData = (Map)locals.getJSON("$wait");
+        if( waitData != null ) {
             String contStep = (String)waitData.get("cont");
             step( contStep, result );
             locals.remove("$wait");
@@ -211,4 +221,19 @@ public class Process {
         return locals;
     }
 
+    /**
+     * Create a procedure ID from a procedure name and its arguments.
+     */
+    @SuppressWarnings("unchecked")
+    public static String makeProcedureID(String name, Object... args) {
+        // Create a JSON object containing the procedure ID.
+        // The procedure ID is formed from the JSON representation of the procedure name +
+        // the procedure arguments, and can be used to identify functionally equivalent
+        // procedure calls.
+        JSONObject procIDData = new JSONObject();
+        procIDData.put("name", name );
+        procIDData.put("args", args );
+        return procIDData.toJSONString();
+    }
+    
 }
