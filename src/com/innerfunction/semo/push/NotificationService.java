@@ -93,7 +93,7 @@ public class NotificationService implements Service {
                     boolean registrationNeeded = (regID == null || regVersion != currVersion);
                     if( registrationNeeded ) {
                         // Register app in background.
-                        BackgroundTaskRunner.run(new BackgroundTaskRunner.Task() {
+                        BackgroundTaskRunner.run(new Runnable() {
                             @Override
                             public void run() {
                                 try {

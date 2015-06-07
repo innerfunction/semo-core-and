@@ -91,7 +91,7 @@ public class Choreographer implements Service {
             // Start the process.
             if( runInBackground ) {
                 final Number _pid = pid;
-                BackgroundTaskRunner.run(new BackgroundTaskRunner.Task() {
+                BackgroundTaskRunner.run(new Runnable() {
                     @Override
                     public void run() {
                         process.start( args );
@@ -238,7 +238,7 @@ public class Choreographer implements Service {
             for( i = 0; i < pids.length; i++ ) {
                 try {
                     final Process process = retreivedProcesses.get( i );
-                    BackgroundTaskRunner.run(new BackgroundTaskRunner.Task() {
+                    BackgroundTaskRunner.run(new Runnable() {
                         @Override
                         public void run() {
                             process.resume();

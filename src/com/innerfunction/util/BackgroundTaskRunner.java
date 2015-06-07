@@ -10,14 +10,9 @@ import android.os.Build;
  *
  */
 public class BackgroundTaskRunner {
-
-    public static interface Task {
-        /** Run the background task. */
-        public void run();
-    }
     
     @SuppressLint("NewApi")
-    public static void run(final Task task) {
+    public static void run(final Runnable task) {
         AsyncTask<Void,Void,Void> atask = new AsyncTask<Void,Void,Void>() {
             @Override
             protected Void doInBackground(Void... arg0) {

@@ -4,7 +4,6 @@ import java.util.concurrent.Semaphore;
 
 import com.innerfunction.semo.test.Animal;
 import com.innerfunction.util.BackgroundTaskRunner;
-import com.innerfunction.util.BackgroundTaskRunner.Task;
 import com.innerfunction.util.Deferred;
 import com.innerfunction.util.Deferred.Callback;
 
@@ -43,7 +42,7 @@ public class AsyncTest extends AndroidTestCase {
                 return result;
             }
         });
-        BackgroundTaskRunner.run(new Task(){
+        BackgroundTaskRunner.run(new Runnable(){
             @Override
             public void run() {
                 Looper.prepare();
@@ -77,7 +76,7 @@ public class AsyncTest extends AndroidTestCase {
                 return result;
             }
         });
-        BackgroundTaskRunner.run(new Task(){
+        BackgroundTaskRunner.run(new Runnable(){
             @Override
             public void run() {
                 Looper.prepare();

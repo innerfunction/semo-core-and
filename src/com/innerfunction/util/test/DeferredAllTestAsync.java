@@ -6,7 +6,6 @@ import java.util.concurrent.Semaphore;
 
 import com.innerfunction.util.BackgroundTaskRunner;
 import com.innerfunction.util.Deferred;
-import com.innerfunction.util.BackgroundTaskRunner.Task;
 
 import android.os.Handler;
 import android.os.Looper;
@@ -48,7 +47,7 @@ public class DeferredAllTestAsync extends AndroidTestCase {
                 return result;
             }
         });
-        BackgroundTaskRunner.run(new Task(){
+        BackgroundTaskRunner.run(new Runnable(){
             @Override
             public void run() {
                 Looper.prepare();

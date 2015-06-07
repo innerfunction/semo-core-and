@@ -13,8 +13,6 @@ import java.util.Map;
 
 import org.json.simple.parser.ParseException;
 
-import com.innerfunction.util.BackgroundTaskRunner.Task;
-
 import android.annotation.SuppressLint;
 import android.util.Log;
 
@@ -58,7 +56,7 @@ public class HTTPUtils {
     public static void getJSON(final String url, final JSONRequestCallback callback) throws MalformedURLException {
         final URL _url = new URL( url );
         // Execute the request on a background thread.
-        BackgroundTaskRunner.run(new Task() {
+        BackgroundTaskRunner.run(new Runnable() {
             @SuppressWarnings("unchecked")
             @Override
             public void run() {
@@ -97,7 +95,7 @@ public class HTTPUtils {
     public static void postJSON(final String url, final Map<String,Object> data, final JSONRequestCallback callback) throws MalformedURLException {
         final URL _url = new URL( url );
         // Execute the request on a background thread.
-        BackgroundTaskRunner.run(new Task() {
+        BackgroundTaskRunner.run(new Runnable() {
             @SuppressWarnings("unchecked")
             @Override
             public void run() {
@@ -176,7 +174,7 @@ public class HTTPUtils {
     public static void getFile(final String url, final long offset, final File file, final FileRequestCallback callback) throws MalformedURLException {
         final URL _url = new URL( url );
         // Execute the request on a background thread.
-        BackgroundTaskRunner.run(new Task() {
+        BackgroundTaskRunner.run(new Runnable() {
             @Override
             public void run() {
                 InputStream in = null;
