@@ -88,6 +88,7 @@ public class AnRResource extends FileResource {
          * Assumes that the resource's string representation is the name of an image to be found in the
          * app's resource bundle.
          */
+        @SuppressWarnings("deprecation")
         @Override
         public Drawable asImage() {
             return this.r.getDrawable( this.resourceID );

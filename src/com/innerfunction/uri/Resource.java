@@ -28,8 +28,6 @@ public class Resource implements URIResolver {
     protected Context context;
     /** Type conversions. */
     protected TypeConversions conversions;
-    /** Whether the data encapsulated by this resource is updateable. */
-    protected boolean updateable;
     
     // This constructor intended for NullResource.
     private Resource() {
@@ -120,21 +118,21 @@ public class Resource implements URIResolver {
      * Refresh the resource by resolving its URI again and returning the result.
      */
     public Resource refresh() {
-        return resolveURI( uri );
+        return dereference( uri );
     }
 
     @Override
-    public Resource resolveURIFromString(String uri) {
-        return resolveURIFromString( uri, this );
+    public Resource dereference(String uri) {
+        return dereference( uri, this );
     }
 
     @Override
-    public Resource resolveURIFromString(String uri, Resource context) {
+    public Resource dereference(String uri, Resource context) {
         Resource result = null;
         CompoundURI curi;
         try {
             curi = new CompoundURI( uri );
-            result = resolveURI( curi, context );
+            result = dereference( curi, context );
         }
         catch(URISyntaxException e) {
             Log.e( LogTag, String.format("Parsing '%s'", uri ), e );
@@ -143,34 +141,15 @@ public class Resource implements URIResolver {
     }
 
     @Override
-    public Resource resolveURI(CompoundURI uri) {
-        return resolveURI( uri, this );
+    public Resource dereference(CompoundURI uri) {
+        return dereference( uri, this );
     }
 
     @Override
-    public Resource resolveURI(CompoundURI uri, Resource context) {
-        return this.resolver.resolveURI( uri, context );
-    }
-    /*
-    @Override
-    public boolean dispatchURI(String uri) {
-        return dispatchURI( uri, this );
+    public Resource dereference(CompoundURI uri, Resource context) {
+        return this.resolver.dereference( uri, context );
     }
     
-    // TODO
-    @Override
-    public boolean dispatchURI(String uri, Resource context) {
-        return false;
-    }
-    */
-    public boolean isUpdateable() {
-        return this.updateable;
-    }
-    
-    public void setUpdateable(boolean updateable) {
-        this.updateable = updateable;
-    }
-
     @Override
     public int hashCode() {
         return this.uri != null ? this.uri.hashCode() : super.hashCode();

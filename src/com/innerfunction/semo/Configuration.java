@@ -215,7 +215,7 @@ public class Configuration extends JSONData {
                         // the URI and return its value instead.
                         if( prefix == '@' ) {
                             String uri = svalue.substring( 1 );
-                            value = resource.resolveURIFromString( uri );
+                            value = resource.dereference( uri );
                         }
                         // Any string values starting with a '#' are potential path references to other
                         // properties in the same configuration. Attempt to resolve them against the configuration

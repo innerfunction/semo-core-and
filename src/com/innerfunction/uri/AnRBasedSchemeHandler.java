@@ -34,7 +34,7 @@ public class AnRBasedSchemeHandler extends AbstractSchemeHandler {
     }
 
     @Override
-    public CompoundURI resolveToAbsoluteURI(CompoundURI uri, CompoundURI context) {
+    public CompoundURI resolve(CompoundURI uri, CompoundURI context) {
         // If URI name doesn't begin with / then it is a relative URI.
         String name = uri.getName();
         if( name.charAt( 0 ) != '/' ) {
@@ -46,7 +46,7 @@ public class AnRBasedSchemeHandler extends AbstractSchemeHandler {
     }
 
     @Override
-    public Resource handle(CompoundURI uri, Map<String, Resource> params, Resource parent) {
+    public Resource dereference(CompoundURI uri, Map<String, Resource> params, Resource parent) {
         Resource result = null;
         // Leading slashes on an asset name will cause problems when resolving the asset file, so strip them from the name.
         String name = uri.getName();

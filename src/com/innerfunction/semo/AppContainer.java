@@ -97,7 +97,7 @@ public class AppContainer extends Container {
             
             if( uri != null ) {
                 Log.i( Tag, String.format("Loading app container configuration from %s", uri ));
-                Resource resource = resolver.resolveURI( uri );
+                Resource resource = resolver.dereference( uri );
                 configuration = new Configuration( resource, androidContext );
             }
             else {
@@ -130,11 +130,11 @@ public class AppContainer extends Container {
         // Add additional schemes to the resolver/dispatcher.
         resolver.addHandler("named", new SchemeHandler() {
             @Override
-            public CompoundURI resolveToAbsoluteURI(CompoundURI uri, CompoundURI context) {
+            public CompoundURI resolve(CompoundURI uri, CompoundURI context) {
                 return uri;
             }
             @Override
-            public Resource handle(CompoundURI uri, Map<String, Resource> params, Resource parent) {
+            public Resource dereference(CompoundURI uri, Map<String, Resource> params, Resource parent) {
                 Object namedObj = named.get( uri.getName() );
                 return namedObj == null ? null : new Resource( androidContext, namedObj, uri, parent );
             }

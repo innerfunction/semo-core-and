@@ -87,29 +87,32 @@ public class Container implements Service, Configurable {
      */
     protected Object instantiateObject(Configuration configuration, String id) {
         Object object = null;
-        String type = configuration.getValueAsString("semo:type");
-        if( type != null ) {
-            String className = types.getValueAsString( type );
-            if( className != null ) {
-                try {
-                    object = newInstanceForClassName( className );
-                }
-                catch(InstantiationException e) {
-                    Log.e( Tag, String.format("Make %s: Error instantiating class %s", id, className ), e );
-                }
-                catch(IllegalAccessException e) {
-                    Log.e( Tag, String.format("Make %s: Unable to instantiating class %s", id, className ), e );
-                }
-                catch(ClassNotFoundException e) {
-                    Log.e( Tag, String.format("Make %s: Class %s not found", id, className ), e );
+        String className = configuration.getValueAsString("and:class");
+        if( className == null ) {
+            String type = configuration.getValueAsString("semo:type");
+            if( type != null ) {
+                className = types.getValueAsString( type );
+                if( className == null ) {
+                    Log.w( Tag, String.format("Make %s: No class name found for type %s", id, type ));
                 }
             }
             else {
-                Log.w( Tag, String.format("Make %s: No class name found for type %s", id, type ));
+                Log.w( Tag, String.format("Make %s: Component configuration missing 'and:class' or 'semo:type' property", id ));
             }
         }
-        else {
-            Log.w( Tag, String.format("Make %s: Component configuration missing 'semo:type' property", id ));
+        if( className != null ) {
+            try {
+                object = newInstanceForClassName( className );
+            }
+            catch(InstantiationException e) {
+                Log.e( Tag, String.format("Make %s: Error instantiating class %s", id, className ), e );
+            }
+            catch(IllegalAccessException e) {
+                Log.e( Tag, String.format("Make %s: Unable to instantiating class %s", id, className ), e );
+            }
+            catch(ClassNotFoundException e) {
+                Log.e( Tag, String.format("Make %s: Class %s not found", id, className ), e );
+            }
         }
         return object;
     }
@@ -160,6 +163,10 @@ public class Container implements Service, Configurable {
                 }
             }
             for( String name : configuration.getValueNames() ) {
+                if( name.equals("and:class") ) {
+                    // Skip class properties.
+                    continue;
+                }
                 if( name.startsWith("ios:") || name.startsWith("semo:") ) {
                     continue; // Skip names starting with ios: or semo: 
                 }
@@ -288,11 +295,11 @@ public class Container implements Service, Configurable {
         if( propClass.isAssignableFrom( object.getClass() ) ) {
             return object;
         }
-        if( configuration.hasValue( name+".semo:type" ) ) {
-            Configuration propConfig = configuration.getValueAsConfiguration( name );
+        Configuration propConfig = configuration.getValueAsConfiguration( name );
+        if( propConfig != null && propConfig.hasValue("and:class") || propConfig.hasValue("semo:type") ) {
             return buildObject( propConfig, name );
         }
-        // No semo:type specified in configuration, so try instantiating an inferred type using the class information provided.
+        // No class or type specified in configuration, so try instantiating an inferred type using the class information provided.
         String className = propClass.getName();
         try {
             object = newInstanceForClassName( className );

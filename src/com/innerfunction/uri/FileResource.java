@@ -17,49 +17,47 @@ import com.innerfunction.util.FileIO;
  */
 @SuppressWarnings("unused")
 public class FileResource extends Resource {
-
+    
     private static final String LogTag = FileResource.class.getSimpleName();
-
+    
     /** The file being represented. */
     private File file;
-
+    
     public FileResource(Context context, File file, CompoundURI uri, Resource parent) {
         super( context, file, uri, parent );
         this.file = file;
-        this.updateable = true;
     }
-
+    
     protected FileResource(Context context, Object resource, CompoundURI uri, Resource parent) {
         super( context, resource, uri, parent );
-        this.updateable = true;
     }
-
+    
     public File asFile() {
         return file;
     }
-
+    
     public InputStream openInputStream() throws IOException {
         return new FileInputStream( this.file );
     }
-
+    
     public String getName() {
         return this.file.getAbsolutePath();
     }
-
+    
     public boolean exists() {
         return this.file.exists();
     }
-
+    
     /** Return the string contents of the file resource. */
     public String asString() {
         return FileIO.readString( this.file, "UTF-8");
     }
-
+    
     /** Return the file URL. */
     public URI asURL() {
         return this.file.toURI();
     }
-
+    
     /** Return the byte contents of the file resource. */
     public byte[] asData() {
         try {
@@ -69,17 +67,17 @@ public class FileResource extends Resource {
             return null;
         }
     }
-
+    
     /** Return the file's contents as parsed JSON data. */
     public Object asJSONData() {
         return conversions.asJSONData( asString() );
     }
-
+    
     /** Return the contents of the file resource as an image. */
     public Drawable asImage() {
         return Drawable.createFromPath( this.file.getAbsolutePath() );
     }
-
+    
     public Object getRepresentation(String representation) {
         if( "data".equals( representation ) ) {
             return this.asData();

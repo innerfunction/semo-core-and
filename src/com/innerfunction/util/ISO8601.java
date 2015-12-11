@@ -28,6 +28,7 @@ public final class ISO8601 {
     /**
      * Transform ISO 8601 string to Date.
      */
+    @SuppressWarnings("deprecation")
     public static Date toDate(final String iso8601string) throws ParseException {
         // Replace Z or UTC at the end of the string with the time offset for UTC.
         String s = iso8601string.replaceFirst("(Z|UTC)$", "+00:00");

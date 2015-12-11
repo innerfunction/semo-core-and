@@ -76,8 +76,8 @@ public class StandardURIResolver implements URIResolver {
     }
 
     @Override
-    public Resource resolveURIFromString(String uri) {
-        return resolveURIFromString( uri, parentResource );
+    public Resource dereference(String uri) {
+        return dereference( uri, parentResource );
     }
 
     /**
@@ -85,10 +85,10 @@ public class StandardURIResolver implements URIResolver {
      * Any relative URIs within the string will be resolved to absolute URIs against the context.
      */
     @Override
-    public Resource resolveURIFromString(String uri, Resource parent) {
+    public Resource dereference(String uri, Resource parent) {
         Resource resource = null;
         try {
-            resource = this.resolveURI( new CompoundURI( uri ), parent );
+            resource = this.dereference( new CompoundURI( uri ), parent );
         }
         catch(URISyntaxException e) {
             Log.e( LogTag, String.format("Parsing '%s'", uri ), e );
@@ -97,8 +97,8 @@ public class StandardURIResolver implements URIResolver {
     }
 
     @Override
-    public Resource resolveURI(CompoundURI uri) {
-        return resolveURI( uri, parentResource );
+    public Resource dereference(CompoundURI uri) {
+        return dereference( uri, parentResource );
     }
 
     /**
@@ -106,7 +106,7 @@ public class StandardURIResolver implements URIResolver {
      * Any relative URIs within the URI will be resolved to absolute URIs against the parent.
      */
     @Override
-    public Resource resolveURI(CompoundURI uri, Resource parent) {
+    public Resource dereference(CompoundURI uri, Resource parent) {
         if( parent == null ) {
             throw new IllegalArgumentException("Parent resource can't be null");
         }
@@ -117,7 +117,7 @@ public class StandardURIResolver implements URIResolver {
             Map<String,CompoundURI> params = uri.getParameters();
             Map<String,Resource> paramValues = new HashMap<String,Resource>( params.size() );
             for( String name : params.keySet() ) {
-                Resource value = this.resolveURI( params.get( name ), parent );
+                Resource value = this.dereference( params.get( name ), parent );
                 if( value != null ) {
                     paramValues.put( name, value );
                 }
@@ -125,28 +125,17 @@ public class StandardURIResolver implements URIResolver {
             // Ensure current URI is an absolute URI.
             CompoundURI referenceURI = parent.getSchemeContext().get( uri.getScheme() );
             if( referenceURI != null ) {
-                uri = handler.resolveToAbsoluteURI( uri, referenceURI );
+                uri = handler.resolve( uri, referenceURI );
             }
             // Handle the URI.
-            resource = handler.handle( uri, paramValues, parent );
+            resource = handler.dereference( uri, paramValues, parent );
         }
         else {
             Log.e( LogTag, String.format("Handler not found for scheme '%s'", uri.getScheme() ) );
         }
         return resource;
     }
-/*
-    // TODO
-    @Override
-    public boolean dispatchURI(String uri, Resource parent) {
-        return false;
-    }
-
-    @Override
-    public boolean dispatchURI(String uri) {
-        return dispatchURI( uri, parentResource );
-    }
-*/
+    
     /**
      * Return a singleton instance of this class for the specified context.
      */

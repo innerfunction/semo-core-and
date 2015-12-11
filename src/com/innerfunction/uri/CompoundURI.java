@@ -61,12 +61,12 @@ public class CompoundURI {
      * Create a URI by parsing the argument.
      */
     public CompoundURI(String uri, boolean nested) throws URISyntaxException {
-        //                            |---| Optional [ at start of URI
-        //                            |   | |---------| Optional URI scheme
-        //                            |   | |         | |-------------| URI name
-        //                            |   | |         | |             ||-------------| URI fragment
-        //                            v   v v         v v             vv             v |--| URI parameters
-        Pattern p = Pattern.compile("^(\\[)?(?:(\\w+):)?([\\w.,/%_~-]*)(#[\\w./%_~-]*)?(.*)$");
+        //                            |---| -> Optional [ at start of URI
+        //                            |   | |---------| -> Optional URI scheme
+        //                            |   | |         | |-------------| -> URI name
+        //                            |   | |         | |             ||-------------| -> URI fragment
+        //                            v   v v         v v             vv             v |--| -> URI parameters
+        Pattern p = Pattern.compile("^(\\[)?(?:(\\w+):)?([\\w.,/%_~{}-]*)(#[\\w./%_~-]*)?(.*)$");
         Matcher m = p.matcher( uri );
         if( m.find() ) {
             String g1 = m.group( 1 );
@@ -75,6 +75,8 @@ public class CompoundURI {
             this.scheme = m.group( 2 );
             if( this.scheme == null ) {
                 this.scheme = "s";
+                // Don't parse parameters on implicit string URIs. This is so that bare word strings
+                // can be included in a URI without greedily consuming the trailing parameter string.
                 parseParams = false;
             }
             this.name = m.group( 3 );
@@ -87,15 +89,35 @@ public class CompoundURI {
 
             if( parseParams ) {
 
-                Pattern paramPattern = Pattern.compile("^\\+(\\w+)@(.*)$");
+                Pattern paramPattern = Pattern.compile("^\\+(\\w+)([@=])(.*)$");
                 while( params != null && params.length() > 0 ) {
                     m = paramPattern.matcher( params );
                     if( m.find() ) {
                         String pname = m.group( 1 );
-                        String pvalue = m.group( 2 );
-                        CompoundURI puri = new CompoundURI( pvalue, true );
+                        String op = m.group( 2 );
+                        String pvalue = m.group( 3 );
+                        CompoundURI puri;
+                        if("=".equals( op ) ) {
+                            // Promote parameter values assigned using = to full string URIs.
+                            int idx = pvalue.indexOf('+');
+                            if( idx > -1 ) {
+                                params = this.trailing = pvalue.substring( idx );
+                                pvalue = pvalue.substring( 0, idx );
+                            }
+                            else {
+                                params = this.trailing = "";
+                            }
+                            pvalue = "s:"+pvalue;
+                            puri = new CompoundURI( pvalue, true );
+                            if( puri.trailing.length() > 0 ) {
+                                throw new URISyntaxException( uri, "Trailing characters after = parameter assignment");
+                            }
+                        }
+                        else {
+                            puri = new CompoundURI( pvalue, true );
+                            params = this.trailing = puri.trailing;
+                        }
                         this.parameters.put( pname, puri );
-                        params = this.trailing = puri.trailing;
                     }
                     else if( params.charAt( 0 ) == ']' ) {
                         if( bracketed ) {
@@ -103,7 +125,7 @@ public class CompoundURI {
                             this.trailing = params.substring( 1 );
                             // If this URI isn't nested and there are trailing chars after the ] then parse error.
                             if( this.trailing.length() > 0 && !nested ) {
-                                throw new URISyntaxException( uri, "Parse error: Unmatched ] in "+uri);
+                                throw new URISyntaxException( uri, "Unmatched ]");
                             }
                         }
                         else if( nested ) {
@@ -112,19 +134,19 @@ public class CompoundURI {
                         }
                         else {
                             // URI isn't bracketed or nested, so parse error.
-                            throw new URISyntaxException( uri, "Parse error: Unmatched ] in "+uri);
+                            throw new URISyntaxException( uri, "Unmatched ]");
                         }
                         // Whatever the situation, a ] indicates the end of this URI so break out of the parse loop.
                         break;
                     }
                     else {
-                        throw new URISyntaxException( uri, "Parse error: "+params );
+                        throw new URISyntaxException( uri, "Bad parameter format");
                     }
                 }
             }
         }
         else {
-            throw new URISyntaxException( uri, "Invalid URI: "+uri );
+            throw new URISyntaxException( uri, "Invalid URI");
         }
         // URI decode the name.
         this.name = Uri.decode( this.name );

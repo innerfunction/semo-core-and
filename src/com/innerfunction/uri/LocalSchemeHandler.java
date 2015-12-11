@@ -22,7 +22,7 @@ public class LocalSchemeHandler extends AbstractSchemeHandler {
     }
 
     @Override
-    public Resource handle(CompoundURI uri, Map<String, Resource> params, Resource parent) {
+    public Resource dereference(CompoundURI uri, Map<String, Resource> params, Resource parent) {
         return new LocalResource( this.context, this.preferences, uri, parent );
     }
 

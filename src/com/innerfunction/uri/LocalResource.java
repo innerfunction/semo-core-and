@@ -18,7 +18,6 @@ public class LocalResource extends Resource {
         super( context, uri.getName(), uri, parent );
         this.name = uri.getName();
         this.preferences = preferences;
-        this.updateable = true;
     }
 
     public String getLocalName() {

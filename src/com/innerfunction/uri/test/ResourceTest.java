@@ -1,42 +1,21 @@
 package com.innerfunction.uri.test;
 
-import java.net.URISyntaxException;
-
 import com.innerfunction.uri.CompoundURI;
-import com.innerfunction.uri.Resource;
+import com.innerfunction.uri.StandardURIResolver;
 
 import android.test.AndroidTestCase;
-import android.util.Log;
 
 public class ResourceTest extends AndroidTestCase {
 
-    Resource resource;
-    Resource context ;
-    String uri, uri2;
-    Resource resolve;
-    CompoundURI cmp;
+    StandardURIResolver resolver;
+    CompoundURI curi1;
     
     public void setUp() throws Exception {
-        uri="http://www.google.com";
+        resolver = StandardURIResolver.getInstance( getContext() );
+        curi1 = new CompoundURI("s:x-{p1}-{p2}+p1=abc+p2=def");
     }
     
-    public void testResolveURI() throws URISyntaxException{
-        
-        cmp=new CompoundURI(uri);
-        resolve=resource.resolveURI(cmp);
-        
-        
-    }
-    
-    public void testResolveURIFromString1(){
-         resolve=resource.resolveURIFromString(uri, context);
-         cmp=resolve.getURI();
-         uri2=cmp.toString();
-         Log.w("valor", uri2);
-         assertEquals(uri,uri2);
-    }
-    
-    public void testResolveURIFromString2(){
-        
+    public void testStringResourceParameterReplacement() {
+        assertEquals("x-abc-def", resolver.dereference( curi1 ).asString() );
     }
 }
