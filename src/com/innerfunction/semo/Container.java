@@ -18,6 +18,8 @@ import java.util.Map;
 
 
 
+
+
 import com.innerfunction.uri.Resource;
 
 import android.annotation.SuppressLint;
@@ -148,20 +150,7 @@ public class Container implements Service, Configurable {
             if( object instanceof IOCConfigurable ) {
                 ((IOCConfigurable)object).beforeConfigure( this );
             }
-            Class<?> cl = object.getClass();
-            Map<String,Method> methods = new HashMap<String,Method>();
-            // Generate a map of set methods keyed by name (but setXXX -> xXX)
-            for( Method method : cl.getMethods() ) {
-                String methodName = method.getName(); 
-                if( methodName.startsWith("set") ) {
-                    Class[] argTypes = method.getParameterTypes();
-                    if( argTypes.length == 1 ) {
-                        String baseName = methodName.substring( 3 );
-                        String propName = baseName.substring( 0, 1 ).toLowerCase()+baseName.substring( 1 );
-                        methods.put( propName, method );
-                    }
-                }
-            }
+            Map<String,Method> methods = getPropertyMethodsForObject( object );
             for( String name : configuration.getValueNames() ) {
                 if( name.equals("and:class") ) {
                     // Skip class properties.
@@ -320,6 +309,8 @@ public class Container implements Service, Configurable {
      */
     @Override
     public void configure(Configuration configuration) {
+        // Property methods for this container.
+        Map<String,Method> propertyMethods = getPropertyMethodsForObject( this );
         // Add named objects.
         Configuration namedConfig = configuration.getValueAsConfiguration("named");
         if( namedConfig == null ) {
@@ -331,7 +322,28 @@ public class Container implements Service, Configurable {
             // Initialize named objects.
             for(String name : names) {
                 Configuration objConfig = namedConfig.getValueAsConfiguration( name );
-                Object object = instantiateObject( objConfig, name );
+                Object object = null;
+                // Try instantiating named property from configuration.
+                if( objConfig.hasValue("and:class") || objConfig.hasValue("semo:type") ) {
+                    object = instantiateObject( objConfig, name );
+                }
+                // If no object then try inferring a type from the corresponding container
+                // property, if any.
+                if( object == null ) {
+                    Method propertyMethod = propertyMethods.get( name );
+                    if( propertyMethod != null ) {
+                        Class<?> propType = propertyMethod.getParameterTypes()[0];
+                        String className = propType.getName();
+                        if( className != null ) {
+                            try {
+                                object = newInstanceForClassName( className );
+                            }
+                            catch(Exception e) {
+                            }
+                        }
+                    }
+                }
+                // If object then add to named set and record configuration.
                 if( object != null ) {
                     named.put( name, object );
                     objConfigs.put( name, objConfig );
@@ -343,6 +355,19 @@ public class Container implements Service, Configurable {
                 if( object != null ) {
                     Configuration objConfig = objConfigs.get( name );
                     configureObject( object, objConfig, name );
+                    // Try assigning the named object to a container property.
+                    Method propertyMethod = propertyMethods.get( name );
+                    if( propertyMethod != null ) {
+                        Class<?> propType = propertyMethod.getParameterTypes()[0];
+                        if( propType.isAssignableFrom( object.getClass() ) ) {
+                            try {
+                                propertyMethod.invoke( this, object );
+                            }
+                            catch(Exception e) {
+                                Log.e( Tag, String.format("Error setting container property '%s'", name ), e );
+                            }
+                        }
+                    }
                 }
             }
         }
@@ -382,4 +407,24 @@ public class Container implements Service, Configurable {
         running = false;
     }
 
+    @SuppressLint("DefaultLocale")
+    protected Map<String,Method> getPropertyMethodsForObject(Object object) {
+        Class<?> cl = object.getClass();
+        Map<String,Method> methods = new HashMap<String,Method>();
+        // Generate a map of set methods keyed by name (but setXXX -> xXX)
+        for( Method method : cl.getMethods() ) {
+            String methodName = method.getName(); 
+            if( methodName.startsWith("set") ) {
+                @SuppressWarnings("rawtypes")
+                Class[] argTypes = method.getParameterTypes();
+                if( argTypes.length == 1 ) {
+                    String baseName = methodName.substring( 3 );
+                    String propName = baseName.substring( 0, 1 ).toLowerCase()+baseName.substring( 1 );
+                    methods.put( propName, method );
+                }
+            }
+        }
+        return methods;
+    }
+    
 }
